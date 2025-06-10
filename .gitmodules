@@ -1,0 +1,3 @@
+[submodule "meta-comprehensive-rag-benchmark-starter-kit"]
+	path = meta-comprehensive-rag-benchmark-starter-kit
+	url = https://github.com/your-org/meta-comprehensive-rag-benchmark-starter-kit.git
