@@ -18,46 +18,32 @@ search_pipeline = UnifiedSearchPipeline(
     web_hf_dataset_id="crag-mm-2025/web-search-index-validation",
     image_hf_dataset_id="crag-mm-2025/image-search-index-validation",
 )
+from datasets import load_dataset
+from itertools import islice
+
 ############################
-# 1.  Up-front data loading
+# Config
 ############################
-dataset = load_dataset(
+BATCH_SIZE = 8                    # ← change to fit GPU/VRAM
+SPLIT      = "validation"         # or "public_test", etc.
+
+############################
+# 1.  Load the HF split
+############################
+ds = load_dataset(
     "crag-mm-2025/crag-mm-single-turn-public",
-    split="validation",
-    streaming=False,   # keeps things in RAM for fast look-ups
+    split=SPLIT,
+    streaming=False,              # set True if RAM is tight
 )
 
-# Build an O(1) lookup table: session_id → dataset row
-id2row = {row["session_id"]: row for row in dataset}
-
-with open("crag-mm-validation-no-image.json", "r", encoding="utf-8") as f:
-    raw_records = json.load(f)
-
-##################################################
-# 2.  Helper: yield successive fixed-size batches
-##################################################
+############################
+# 2.  Mini helper for batching
+############################
 def batched(iterable, n):
-    "s -> (s0…s{n-1}), (sn…s{2n-1}), …"
+    "Yield successive n-sized lists."
     it = iter(iterable)
-    while batch := list(islice(it, n)):
+    while (batch := list(islice(it, n))):
         yield batch
-
-###############################################
-# 3.  Convert each record into model inputs
-###############################################
-def to_model_inputs(record):
-    """Return (query, image, message_history) or None if the image is missing."""
-    row = id2row.get(record["session_id"])
-    if row is None or row["image"] is None:
-        return None                          # skip if we can’t find the picture
-
-    query = record["turns"]["query"][0]
-    image = row["image"]                    # PIL.Image object
-    msg_history = None                      # or previous turns if you have them
-    return query, image, msg_history
-
-model_inputs = [x for x in map(to_model_inputs, raw_records) if x]
-
 
 TARGET_WIDTH = 960
 TARGET_HEIGHT = 1280
@@ -70,68 +56,32 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
         resized_images.append(img)
     return resized_images
 
-def main():
-    #search_pipeline = RemoteSearchPipeline("http://localhost:8001")
 
-    agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
-    #answers = agent.batch_generate_response(queries, images, message_histories)
-    #answers = agent.batch_summarize_images(queries, images)
+agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
     
-    #################################################
-    # 4.  Main loop – send each batch to your agent
-    #################################################
-    BATCH_SIZE = 8
-    all_agent_outputs = []
+############################
+# 3.  Main loop
+############################
+for minibatch in batched(ds, BATCH_SIZE):
+    # Each row has: session_id, image (PIL), turns[...] … :contentReference[oaicite:0]{index=0}
+    session_ids = [row["session_id"] for row in minibatch]
+    queries   = [row["turns"]["query"][0] for row in minibatch]
+    images_raw = [row["image"]             for row in minibatch]   # PIL.Image
+    images    = resize_images(images_raw)
+    histories = [None] * len(minibatch)                          # no message history
 
-    for batch in batched(model_inputs, BATCH_SIZE):
-        images = resize_images(images)
-        queries, images, histories = zip(*batch)          # unzip
-        # RemoteSearchPipeline can work in parallel here too if you like:
-        agent_responses, msg_states = agent.batch_generate_response(
-            list(queries), list(images), list(histories)
-        )
-        all_agent_outputs.extend(agent_responses)
+    # ── retrieval (optional) ────────────────────────────────
 
+    #answers = agent.batch_generate_response(queries, images, message_histories)
+    answers = agent.batch_summarize_images(session_ids, queries, images)
+     
     ############################################################
     # 5. (Optional) emit SFT lines in Alpaca / ChatML style JSON
     ############################################################
     with open("sft_batch_results.jsonl", "w", encoding="utf-8") as out:
-        for record, answer in zip(raw_records, all_agent_outputs):
+        for record, answer in zip(raw_records, answers):
             out.write(json.dumps({
                 "session_id": record["session_id"],
                 "prompt":     record["turns"]["query"][0],
                 "response":   answer,
             }) + "\n")
-
-
-# # Step 2: Access the first item (index 0)
-# entry = data[0]
-
-# print("\nAll fields in entry:")
-# for k, v in entry.items():
-#     print(f"{k}: {v}")
-
-# session_id = entry.get("session_id", {})
-# query = entry.get("turns", {}).get("query")[0]
-# ground_truth_answer = entry.get("answers", {}).get("ans_full")[0]
-# image = find_image_from_session_id(session_id)
-# domain = entry.get("turns", {}).get("domain")[0]
-# query_category = entry.get("turns", {}).get("query_category")[0]
-# dynamism = entry.get("turns", {}).get("dynamism")[0]
-
-# # Step 3: Print key fields
-# print("=== Entry 10 ===")
-# print("session_id:", session_id)
-# print("Query:", query)
-# print("domain:", domain)
-# print("query_category:", query_category)
-# print("dynamism:", dynamism)
-# print("Image size:", image.size)
-# print("Image mode:", image.mode)
-
-# image_hits = search_pipeline(image, k=5)
-# text_hits  = search_pipeline(query, k=5)
-
-
-if __name__ == "__main__":
-    main()

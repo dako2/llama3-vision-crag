@@ -55,25 +55,25 @@ print("dynamism:", dynamism)
 # find the image based on session_id
 # """
 
-# from datasets import load_dataset
-# dataset = load_dataset("crag-mm-2025/crag-mm-single-turn-public", split="validation")
+from datasets import load_dataset
+dataset = load_dataset("crag-mm-2025/crag-mm-single-turn-public", split="validation")
 
-# def find_image_from_session_id(session_id):
+def find_image_from_session_id(session_id):
 
-#     target_session_id = session_id
-#     # Find the matching example
-#     match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+    target_session_id = session_id
+    # Find the matching example
+    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
 
-#     # Step 3: Load and display the image
-#     if match:
-#         image = match["image"]
-#         print("Session ID:", match["session_id"])
-#         print("Question:", match["turns"])
-#         print("Answer:", match["answers"]["ans_full"])
-#         print("PIL Image Object:", image)
-#         print("Image size:", image.size)
-#         print("Image mode:", image.mode)
-#     else:
-#         print("No matching session_id found.")
+    # Step 3: Load and display the image
+    if match:
+        image = match["image"]
+        print("Session ID:", match["session_id"])
+        print("Question:", match["turns"])
+        print("Answer:", match["answers"]["ans_full"])
+        print("PIL Image Object:", image)
+        print("Image size:", image.size)
+        print("Image mode:", image.mode)
+    else:
+        print("No matching session_id found.")
 
     

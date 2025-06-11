@@ -9,6 +9,10 @@ from cragmm_search.search import UnifiedSearchPipeline
 from crag_web_result_fetcher import WebSearchResult
 import vllm
 
+import json
+from pathlib import Path
+
+
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
 
@@ -83,6 +87,14 @@ class SimpleRAGAgent(BaseAgent):
         self.model_name = model_name
         self.max_gen_len = max_gen_len
         
+        # ----------------------------- NEW -----------------------------
+        # Flat list of every message/event (keeps order)
+        self.messages: List[Dict[str, Any]] = []
+        # Starting index of each chat session inside `self.messages`
+        self.session_indices: List[int] = [0]
+        self._current_session_id: int = 0
+        # ----------------------------------------------------------------
+ 
         self.initialize_models()
         
     def initialize_models(self):
@@ -114,9 +126,38 @@ class SimpleRAGAgent(BaseAgent):
                 "image": 1 
             } # In the CRAG-MM dataset, every conversation has at most 1 image
         )
-        self.tokenizer = self.llm.get_tokenizer()
-        
+        self.tokenizer = self.llm.get_tokenizer() 
+
         print("Models loaded successfully")
+    
+    def _log_for_sft(
+        self,
+        session_id: str,
+        assistant_answer: str,
+        history=None,
+        file_path: Path = Path("sft_data.jsonl"),
+    ):
+        """
+        Append one training example in the minimal format expected by
+        Llama-3 Vision fine-tuning (session_id + messages).
+
+        Parameters
+        ----------
+        session_id : str
+        query      : str               # the user question
+        assistant_answer : str         # model response
+        history    : list[dict] | None # previous turns (same format you already use)
+        file_path  : Path              # where to append (default: ./sft_data.jsonl)
+        """
+        row = {
+            "session_id": session_id,
+            "messages": (history or []) + [
+                {"role": "assistant", "content": assistant_answer},
+            ],
+        }
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with file_path.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     def get_batch_size(self) -> int:
         """
@@ -131,7 +172,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         return AICROWD_SUBMISSION_BATCH_SIZE
     
-    def batch_summarize_images(self, queries, images: List[Image.Image]) -> List[str]:
+    def batch_summarize_images(self, session_ids, queries, images: List[Image.Image]) -> List[str]:
         """
         Generate brief summaries for a batch of images to use as search keywords.
         
@@ -148,6 +189,7 @@ class SimpleRAGAgent(BaseAgent):
         summarize_prompt = "You provide specific object identification in an image given a user's query. Don't answer the question itself but only provide the object name. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
         
         inputs = []
+        messages_batch = []
         for query, image in zip(queries, images):
             messages = [
                 {"role": "system", "content": summarize_prompt},
@@ -167,6 +209,7 @@ class SimpleRAGAgent(BaseAgent):
                     "image": image
                 }
             })
+            messages_batch.append(messages)
         
         # Generate summaries in a single batch call
         outputs = self.llm.generate(
@@ -182,10 +225,15 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and clean summaries
         summaries = [output.outputs[0].text.strip() for output in outputs]
         print(f"Generated {len(summaries)} image summaries: {summaries}")
+
+        for session_id, answer, history in zip(session_ids, summaries, messages_batch): 
+            self._log_for_sft(session_id, answer, history)
+
         return summaries
     
     def prepare_rag_enhanced_inputs(
         self, 
+        session_ids,
         queries: List[str], 
         images: List[Image.Image], 
         image_summaries: List[str],
@@ -221,6 +269,7 @@ class SimpleRAGAgent(BaseAgent):
         
         # Prepare formatted inputs with RAG context for each query
         inputs = []
+        messages_batch = []
         for idx, (query, image, message_history, search_results) in enumerate(
             zip(queries, images, message_histories, search_results_batch)
         ):
@@ -286,7 +335,28 @@ class SimpleRAGAgent(BaseAgent):
                     "image": image
                 }
             })
+            messages_batch.append(messages)
+
+
+        # Step 3: Generate responses using the batch of RAG-enhanced prompts
+        print(f"Generating responses for {len(inputs)} queries")
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=MAX_GENERATION_TOKENS,
+                skip_special_tokens=True
+            )
+        ) 
+
+        # Extract and return the generated responses
+        responses = [output.outputs[0].text for output in outputs]
+        print(f"Successfully generated {len(responses)} responses")
         
+        for session_id, answer, history in zip(session_ids, responses, messages_batch): 
+            self._log_for_sft(session_id, answer, history)
+
         return inputs
 
     def batch_generate_response(
@@ -328,27 +398,11 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Processing batch of {len(queries)} queries with RAG")
         
         # Step 1: Batch summarize all images for search terms
-        image_summaries = self.batch_summarize_images(queries, images)
+        image_summaries = self.batch_summarize_images(session_ids, queries, images)
         
         # Step 2: Prepare RAG-enhanced inputs in batch
-        rag_inputs = self.prepare_rag_enhanced_inputs(
+        responses = self.prepare_rag_enhanced_inputs(session_ids, 
             queries, images, image_summaries, message_histories
         )
-        
-        # Step 3: Generate responses using the batch of RAG-enhanced prompts
-        print(f"Generating responses for {len(rag_inputs)} queries")
-        outputs = self.llm.generate(
-            rag_inputs,
-            sampling_params=vllm.SamplingParams(
-                temperature=0.1,
-                top_p=0.9,
-                max_tokens=MAX_GENERATION_TOKENS,
-                skip_special_tokens=True
-            )
-        )
-        
-        # Extract and return the generated responses
-        responses = [output.outputs[0].text for output in outputs]
-        print(f"Successfully generated {len(responses)} responses")
         
         return responses
