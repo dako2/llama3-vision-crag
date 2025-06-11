@@ -436,7 +436,7 @@ class SimpleRAGAgent(BaseAgent):
     def inference(
         self, 
         session_ids,
-        search_results,
+        search_results_batch,
         queries: List[str], 
         images: List[Image.Image], 
         image_summaries: List[str],
@@ -577,7 +577,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Processing batch of {len(queries)} queries with RAG")
         
         responses = self.zero_shots(session_ids, queries, images)
-        print(responses)
+        print("Case0",responses)
 
         # Step 1: Batch summarize all images for search terms
         image_summaries = self.batch_summarize_images(session_ids, queries, images)
@@ -590,19 +590,19 @@ class SimpleRAGAgent(BaseAgent):
         responses = self.inference(session_ids, search_results,
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_2_web_search_only.jsonl"
         )
-        print(responses)
+        print("Case2",responses)
 
         image_search_results = self.batch_images_search(session_ids, images)
 
         responses = self.inference(session_ids, image_search_results,
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_3_image_search_only.jsonl"
         )
-        print(responses)
+        print("Case3",responses)
 
         responses = self.inference(session_ids, len(session_ids)*[''],
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_1.jsonl"
         )
-        print(responses)
+        print("Case1",responses)
 
         search_results = self.prepare_rag_enhanced_inputs_with_rephrase(session_ids, 
             queries, images, image_summaries, message_histories
@@ -611,7 +611,7 @@ class SimpleRAGAgent(BaseAgent):
         responses = self.inference(session_ids, search_results,
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_5_web_search_rephrase.jsonl"
         )
-        print(responses)
+        print("Case5",responses)
 
         combined_results = []
         for image_result, web_research in zip(image_search_results, search_results):
@@ -620,5 +620,5 @@ class SimpleRAGAgent(BaseAgent):
         responses = self.inference(session_ids, combined_results,
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_4_image_web.jsonl"
         )
-        print(responses)
+        print("Case4",responses)
         return responses
