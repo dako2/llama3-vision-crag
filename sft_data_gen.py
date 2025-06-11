@@ -10,21 +10,24 @@ from itertools import islice
 
 from remote_search_pipeline import RemoteSearchPipeline
 from agents.rag_agent import SimpleRAGAgent
-from cragmm_search.search import UnifiedSearchPipeline
 
+from cragmm_search.search import UnifiedSearchPipeline
 search_pipeline = UnifiedSearchPipeline(
     text_model_name="BAAI/bge-large-en-v1.5",
     image_model_name="openai/clip-vit-large-patch14-336",
     web_hf_dataset_id="crag-mm-2025/web-search-index-validation",
     image_hf_dataset_id="crag-mm-2025/image-search-index-validation",
 )
+ 
+agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
+
 from datasets import load_dataset
 from itertools import islice
 
 ############################
 # Config
 ############################
-BATCH_SIZE = 8                    # ← change to fit GPU/VRAM
+BATCH_SIZE = 1                    # ← change to fit GPU/VRAM
 SPLIT      = "validation"         # or "public_test", etc.
 
 ############################
@@ -56,8 +59,6 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
         resized_images.append(img)
     return resized_images
 
-
-agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
     
 ############################
 # 3.  Main loop
@@ -75,13 +76,3 @@ for minibatch in batched(ds, BATCH_SIZE):
     #answers = agent.batch_generate_response(queries, images, message_histories)
     answers = agent.batch_summarize_images(session_ids, queries, images)
      
-    ############################################################
-    # 5. (Optional) emit SFT lines in Alpaca / ChatML style JSON
-    ############################################################
-    with open("sft_batch_results.jsonl", "w", encoding="utf-8") as out:
-        for record, answer in zip(raw_records, answers):
-            out.write(json.dumps({
-                "session_id": record["session_id"],
-                "prompt":     record["turns"]["query"][0],
-                "response":   answer,
-            }) + "\n")
