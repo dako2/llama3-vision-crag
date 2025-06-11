@@ -230,6 +230,88 @@ class SimpleRAGAgent(BaseAgent):
             self._log_for_sft(session_id, answer, history, file_path="sft_caption_data.jsonl")
 
         return summaries
+
+
+    def zero_shots(self, session_ids, queries, images: List[Image.Image]) -> List[str]:
+        """
+        Generate brief summaries for a batch of images to use as search keywords.
+        
+        This method efficiently processes all images in a single batch call to the model,
+        resulting in better performance compared to sequential processing.
+        
+        Args:
+            images (List[Image.Image]): List of images to summarize.
+            
+        Returns:
+            List[str]: List of brief text summaries, one per image.
+        """
+        # Prepare image summarization prompts in batch
+        summarize_prompt = "Honestly answer the user's tricky question based on the image. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
+        
+        inputs = []
+        messages_batch = []
+        for query, image in zip(queries, images):
+            messages = [
+                {"role": "system", "content": summarize_prompt},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{query}."}]},
+            ]
+            
+            # Format prompt using the tokenizer
+            formatted_prompt = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            
+            inputs.append({
+                "prompt": formatted_prompt,
+                "multi_modal_data": {
+                    "image": image
+                }
+            })
+            messages_batch.append(messages)
+        
+        # Generate summaries in a single batch call
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=30,  # Short summary only
+                skip_special_tokens=True
+            )
+        )
+        
+        # Extract and clean summaries
+        summaries = [output.outputs[0].text.strip() for output in outputs]
+        print(f"Generated {len(summaries)} image summaries: {summaries}")
+
+        for session_id, answer, history in zip(session_ids, summaries, messages_batch): 
+            self._log_for_sft(session_id, answer, history, file_path="sft_caption_data_case_0_zero_shot.jsonl")
+
+        return summaries
+    
+    def batch_images_search(self, session_ids, images: List[Image.Image]) -> List[str]:
+        """
+        Generate brief summaries for a batch of images to use as search keywords.
+        
+        This method efficiently processes all images in a single batch call to the model,
+        resulting in better performance compared to sequential processing.
+        
+        Args:
+            images (List[Image.Image]): List of images to summarize.
+            
+        Returns:
+            List[str]: List of brief text summaries, one per image.
+        """
+        
+        # Retrieve relevant information for each query
+        search_results_batch = []
+        for image in zip(images):
+            results = self.search_pipeline(image, k=NUM_SEARCH_RESULTS)
+            search_results_batch.append(results)
+
+        return search_results_batch
     
 
     def prepare_rag_enhanced_inputs(
@@ -262,12 +344,106 @@ class SimpleRAGAgent(BaseAgent):
         
         # Create combined search queries for each image+query pair
         search_queries = [f"{query} {summary}" for query, summary in zip(queries, image_summaries)]
+        #TODO
         
         # Retrieve relevant information for each query
         for i, search_query in enumerate(search_queries):
             results = self.search_pipeline(search_query, k=NUM_SEARCH_RESULTS)
             search_results_batch.append(results)
+
+        return search_results_batch
+
+    def prepare_rag_enhanced_inputs_with_rephrase(
+        self, 
+        session_ids,
+        queries: List[str], 
+        images: List[Image.Image], 
+        image_summaries: List[str],
+        message_histories: List[List[Dict[str, Any]]]
+    ) -> List[dict]:
+        """
+        Prepare RAG-enhanced inputs for the model by retrieving relevant information in batch.
         
+        This method:
+        1. Uses image summaries combined with queries to perform effective searches
+        2. Retrieves contextual information from the search_pipeline
+        3. Formats prompts incorporating this retrieved information
+        
+        Args:
+            queries (List[str]): List of user questions.
+            images (List[Image.Image]): List of images to analyze.
+            image_summaries (List[str]): List of image summaries for search.
+            message_histories (List[List[Dict[str, Any]]]): List of conversation histories.
+            
+        Returns:
+            List[dict]: List of input dictionaries ready for the model.
+        """
+
+        # Prepare image summarization prompts in batch
+        summarize_prompt = "Be helpful assistant on web search"
+        
+        inputs = []
+        messages_batch = []
+        for query, caption in zip(queries, image_summaries):
+            messages = [
+                {"role": "system", "content": summarize_prompt},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
+            ]
+            
+            # Format prompt using the tokenizer
+            formatted_prompt = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            
+            inputs.append({
+                "prompt": formatted_prompt,
+                "multi_modal_data": {
+                    "image": image
+                }
+            })
+            messages_batch.append(messages)
+        
+        # Generate summaries in a single batch call
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=30,  # Short summary only
+                skip_special_tokens=True
+            )
+        )
+        
+        # Extract and clean summaries
+        summaries = [output.outputs[0].text.strip() for output in outputs]
+        print(f"Generated {len(summaries)} image summaries: {summaries}")
+
+        # Batch process search queries
+        search_results_batch = []
+        
+        # Create combined search queries for each image+query pair
+        search_queries = [f"{query} {summary}" for query, summary in zip(queries, image_summaries)]
+        
+        # Retrieve relevant information for each query
+        for i, search_query in enumerate(search_queries):
+            results = self.search_pipeline(search_query, k=NUM_SEARCH_RESULTS)
+            search_results_batch.append(results)
+
+        return search_results_batch
+
+    def inference(
+        self, 
+        session_ids,
+        search_results,
+        queries: List[str], 
+        images: List[Image.Image], 
+        image_summaries: List[str],
+        message_histories: List[List[Dict[str, Any]]],
+        save_sft_data_path: str,
+    ) -> List[dict]:
+
         # Prepare formatted inputs with RAG context for each query
         inputs = []
         messages_batch = []
@@ -284,7 +460,7 @@ class SimpleRAGAgent(BaseAgent):
                 "Given the context below and the image, answer the question truthfully in one line. "
                 "Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
                 "##Image Caption: {caption}\n"
-                "##Searched Context: {context_str}\n"
+                "##Some Context: {context_str}\n"
                 "##Question: {query_str}\n"
                 "##Answer:"
             )
@@ -357,7 +533,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated {len(responses)} responses")
         
         for session_id, answer, history in zip(session_ids, responses, messages_batch): 
-            self._log_for_sft(session_id, answer, history, file_path="sft_response_data.jsonl")
+            self._log_for_sft(session_id, answer, history, file_path=save_sft_data_path) #"sft_response_data_case_2.jsonl"
 
         return inputs
 
@@ -400,12 +576,49 @@ class SimpleRAGAgent(BaseAgent):
         """
         print(f"Processing batch of {len(queries)} queries with RAG")
         
+        responses = self.zero_shots(session_ids, queries, images)
+        print(responses)
+
         # Step 1: Batch summarize all images for search terms
         image_summaries = self.batch_summarize_images(session_ids, queries, images)
         
         # Step 2: Prepare RAG-enhanced inputs in batch
-        responses = self.prepare_rag_enhanced_inputs(session_ids, 
+        search_results = self.prepare_rag_enhanced_inputs(session_ids, 
             queries, images, image_summaries, message_histories
         )
         
+        responses = self.inference(session_ids, search_results,
+            queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_2_web_search_only.jsonl"
+        )
+        print(responses)
+
+        image_search_results = self.batch_images_search(session_ids, images)
+
+        responses = self.inference(session_ids, image_search_results,
+            queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_3_image_search_only.jsonl"
+        )
+        print(responses)
+
+        responses = self.inference(session_ids, len(session_ids)*[''],
+            queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_1.jsonl"
+        )
+        print(responses)
+
+        search_results = self.prepare_rag_enhanced_inputs_with_rephrase(session_ids, 
+            queries, images, image_summaries, message_histories
+        )
+        
+        responses = self.inference(session_ids, search_results,
+            queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_5_web_search_rephrase.jsonl"
+        )
+        print(responses)
+
+        combined_results = []
+        for image_result, web_research in zip(image_search_results, search_results):
+            combined_results.append(image_result+web_research)
+
+        responses = self.inference(session_ids, combined_results,
+            queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_4_image_web.jsonl"
+        )
+        print(responses)
         return responses
