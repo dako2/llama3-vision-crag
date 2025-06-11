@@ -385,7 +385,7 @@ class SimpleRAGAgent(BaseAgent):
         
         inputs = []
         messages_batch = []
-        for query, caption in zip(queries, image_summaries):
+        for query, caption, image in zip(queries, image_summaries, images):
             messages = [
                 {"role": "system", "content": summarize_prompt},
                 {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
