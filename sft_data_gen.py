@@ -2,6 +2,8 @@
 
 from datasets import load_dataset
 import json
+from typing import Dict, List, Any, Optional
+from PIL import Image
 
 dataset = load_dataset("crag-mm-2025/crag-mm-single-turn-public", split="validation")
 
@@ -63,10 +65,24 @@ queries = [query]
 images = [image]
 message_histories = [None]
 
+
+TARGET_WIDTH = 960
+TARGET_HEIGHT = 1280
+expected_size = (TARGET_WIDTH, TARGET_HEIGHT)
+def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, target_height: int = TARGET_HEIGHT) -> List[Image.Image]:
+    resized_images = []
+    for img in images:
+        if img.size != (target_width, target_height):
+            img = img.resize((target_width, target_height), Image.LANCZOS)
+        resized_images.append(img)
+    return resized_images
+
+images = resize_images(images)
 def main():
     search_pipeline = RemoteSearchPipeline("http://localhost:8001")
     agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
-    answers = agent.batch_generate_response(queries, images, message_histories)
+    #answers = agent.batch_generate_response(queries, images, message_histories)
+    answers = agent.batch_summarize_images(queries, images)
 
     # … rest of your driver code …
 

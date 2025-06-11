@@ -145,13 +145,13 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = "Identify the exact object mentioned in the user's query and reply with only that object's name, expressed in one brief sentence"
+        summarize_prompt = "You provide specific object identification in an image given a user's query. Don't answer the question itself but only provide the object name. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
         
         inputs = []
         for query, image in zip(queries, images):
             messages = [
                 {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": query}]},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Analyze the image and this question -- {query}. Identify the object name in the image for web search."}]},
             ]
             
             # Format prompt using the tokenizer
@@ -350,4 +350,5 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and return the generated responses
         responses = [output.outputs[0].text for output in outputs]
         print(f"Successfully generated {len(responses)} responses")
+        
         return responses
