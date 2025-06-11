@@ -307,7 +307,7 @@ class SimpleRAGAgent(BaseAgent):
         
         # Retrieve relevant information for each query
         search_results_batch = []
-        for image in zip(images):
+        for image in images:
             results = self.search_pipeline(image, k=NUM_SEARCH_RESULTS)
             search_results_batch.append(results)
 
