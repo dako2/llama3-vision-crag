@@ -269,8 +269,8 @@ class SimpleRAGAgent(BaseAgent):
         # Prepare formatted inputs with RAG context for each query
         inputs = []
         messages_batch = []
-        for idx, (query, image, message_history, search_results) in enumerate(
-            zip(queries, images, message_histories, search_results_batch)
+        for idx, (query, image, message_history, search_results, caption) in enumerate(
+            zip(queries, images, message_histories, search_results_batch, image_summaries)
         ):
             # Create system prompt with RAG guidelines
             # SYSTEM_PROMPT = ("You are a helpful assistant that truthfully answers user questions about the provided image."
@@ -281,8 +281,9 @@ class SimpleRAGAgent(BaseAgent):
             user_prompt = (
                 "Given the context below and the image, answer the question truthfully in one line. "
                 "Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
-                "##Searched Context: {context_str}\n\n"
-                "##Question: {query_str}\n\n"
+                "##Image Caption: {caption}\n"
+                "##Searched Context: {context_str}\n"
+                "##Question: {query_str}\n"
                 "##Answer:"
             )
 
@@ -311,7 +312,7 @@ class SimpleRAGAgent(BaseAgent):
             # Structure messages with image and RAG context
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": [{"type": "image"}]}
+                #{"role": "user", "content": [{"type": "image"}]}
             ]
             
             # Add conversation history for multi-turn conversations
@@ -319,7 +320,7 @@ class SimpleRAGAgent(BaseAgent):
                 messages = messages + message_history
             
             # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(context_str=rag_context, query_str=query)})
+            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
             # Apply chat template
             formatted_prompt = self.tokenizer.apply_chat_template(
@@ -330,9 +331,9 @@ class SimpleRAGAgent(BaseAgent):
             
             inputs.append({
                 "prompt": formatted_prompt,
-                "multi_modal_data": {
-                    "image": image
-                }
+                # "multi_modal_data": {
+                #     "image": image
+                # }
             })
             messages_batch.append(messages)
 
@@ -360,6 +361,7 @@ class SimpleRAGAgent(BaseAgent):
 
     def batch_generate_response(
         self,
+        session_ids, 
         queries: List[str],
         images: List[Image.Image],
         message_histories: List[List[Dict[str, Any]]],
