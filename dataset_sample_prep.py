@@ -24,6 +24,8 @@ Read the first row of data
 """
 import json
 
+
+# @E: session_id -> print("Answer:", entry.get("answers", {}).get("ans_full")[0])
 # Step 1: Load the JSON file
 with open("crag-mm-validation-no-image.json", "r", encoding="utf-8") as f:
     data = json.load(f)

@@ -278,7 +278,7 @@ class SimpleRAGAgent(BaseAgent):
             sampling_params=vllm.SamplingParams(
                 temperature=0.1,
                 top_p=0.9,
-                max_tokens=30,  # Short summary only
+                max_tokens=65,  # Short summary only
                 skip_special_tokens=True
             )
         )
@@ -579,7 +579,7 @@ class SimpleRAGAgent(BaseAgent):
         t0 = time.time()
 
         
-        responses = self.zero_shots(session_ids, queries, images)
+        responses = self.zero_shots(session_ids, queries, images) # case 0: no caption, just image, no context
         #print("Case0",responses)
 
         # Step 1: Batch summarize all images for search terms
@@ -590,19 +590,19 @@ class SimpleRAGAgent(BaseAgent):
             queries, images, image_summaries, message_histories
         )
         
-        responses = self.inference(session_ids, search_results,
+        responses = self.inference(session_ids, search_results, # case 2: context from web search, image captions, no image
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_2_web_search_only.jsonl"
         )
         print("Case2",responses)
 
         image_search_results = self.batch_images_search(session_ids, images)
 
-        responses = self.inference(session_ids, image_search_results,
+        responses = self.inference(session_ids, image_search_results, # case 3: context from image search, image captions, no image
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_3_image_search_only.jsonl"
         )
         print("Case3",responses)
 
-        responses = self.inference(session_ids, len(session_ids)*[''],
+        responses = self.inference(session_ids, len(session_ids)*[''], # case 1: no context from search, just image captions, no image
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_1.jsonl"
         )
         print("Case1",responses)
@@ -611,7 +611,7 @@ class SimpleRAGAgent(BaseAgent):
             queries, images, image_summaries, message_histories
         )
         
-        responses = self.inference(session_ids, search_results,
+        responses = self.inference(session_ids, search_results, # case 5: context from web search (with rephrased keywords), image captions, on image
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_5_web_search_rephrase.jsonl"
         )
         print("Case5",responses)
@@ -620,7 +620,7 @@ class SimpleRAGAgent(BaseAgent):
         for image_result, web_research in zip(image_search_results, search_results):
             combined_results.append(image_result+web_research)
 
-        responses = self.inference(session_ids, combined_results,
+        responses = self.inference(session_ids, combined_results, # case 4: context from image search + web search, image captions, on image
             queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_4_image_web.jsonl"
         )
         print("Case4",responses)
