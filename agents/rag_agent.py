@@ -134,7 +134,7 @@ class SimpleRAGAgent(BaseAgent):
         session_id: str,
         assistant_answer: str,
         history=None,
-        file_path: Path = Path("sft_caption_data.jsonl"),
+        file_path: str="sft_caption_data.jsonl",
     ):
         """
         Append one training example in the minimal format expected by
@@ -146,7 +146,7 @@ class SimpleRAGAgent(BaseAgent):
         query      : str               # the user question
         assistant_answer : str         # model response
         history    : list[dict] | None # previous turns (same format you already use)
-        file_path  : Path              # where to append (default: ./sft_data.jsonl)
+        file_path  : Str              # where to append (default: ./sft_data.jsonl)
         """
         row = {
             "session_id": session_id,
@@ -154,6 +154,7 @@ class SimpleRAGAgent(BaseAgent):
                 {"role": "assistant", "content": assistant_answer},
             ],
         }
+        file_path = Path(file_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         with file_path.open("a", encoding="utf-8") as fp:
             fp.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -230,6 +231,7 @@ class SimpleRAGAgent(BaseAgent):
 
         return summaries
     
+
     def prepare_rag_enhanced_inputs(
         self, 
         session_ids,
