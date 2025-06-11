@@ -3,8 +3,6 @@ import json
 
 # Define API endpoint and your API key
 API_URL ="https://api.x.ai/v1"
-API_KEY = "xai-s3R1gXkvA9se2FBbQch3TowVZk0y7X1DPpQ9GDjh9FK5Lhs5JUY8AOxThXHSfhtnlOIl2EBjB5IqKeOr"  # Replace with your actual API key
-
 # Sample function to test Grok API
 def test_grok_api(query="Hello, tell me about the universe!"):
     headers = {
