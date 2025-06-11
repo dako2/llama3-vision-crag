@@ -74,7 +74,8 @@ for minibatch in batched(ds, BATCH_SIZE):
     # ── retrieval (optional) ────────────────────────────────
 
     #answers = agent.batch_generate_response(queries, images, histories)
-    #answers = agent.batch_generate_response(session_ids, queries, images, histories)
-    answers = agent.batch_images_search(session_ids, images)
+    answers = agent.batch_generate_response(session_ids, queries, images, histories)
+    #answers = agent.batch_images_search(session_ids, images)
     print(answers)
+     
      
