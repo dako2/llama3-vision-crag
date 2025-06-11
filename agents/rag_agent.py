@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 # Configuration constants
-AICROWD_SUBMISSION_BATCH_SIZE = 1
+AICROWD_SUBMISSION_BATCH_SIZE = 2
 
 # GPU utilization settings 
 # Change VLLM_TENSOR_PARALLEL_SIZE during local runs based on your available GPUs
