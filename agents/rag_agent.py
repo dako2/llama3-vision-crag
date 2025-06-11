@@ -134,7 +134,7 @@ class SimpleRAGAgent(BaseAgent):
         session_id: str,
         assistant_answer: str,
         history=None,
-        file_path: Path = Path("sft_data.jsonl"),
+        file_path: Path = Path("sft_caption_data.jsonl"),
     ):
         """
         Append one training example in the minimal format expected by
@@ -226,7 +226,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Generated {len(summaries)} image summaries: {summaries}")
 
         for session_id, answer, history in zip(session_ids, summaries, messages_batch): 
-            self._log_for_sft(session_id, answer, history)
+            self._log_for_sft(session_id, answer, history, file_path="sft_caption_data.jsonl")
 
         return summaries
     
@@ -354,7 +354,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated {len(responses)} responses")
         
         for session_id, answer, history in zip(session_ids, responses, messages_batch): 
-            self._log_for_sft(session_id, answer, history)
+            self._log_for_sft(session_id, answer, history, file_path="sft_response_data.jsonl")
 
         return inputs
 
