@@ -15,37 +15,35 @@ from trl import SFTTrainer, SFTConfig
 # wandb.init()
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", save_as="sft_dataset.pkl"):
-    dataset = []
-    with open(jsonl_path, "r", encoding="utf-8") as f:
-        for line in tqdm(f, desc="Loading JSONL"):
-            example = json.loads(line)
+# def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", save_as="sft_dataset.pkl"):
+#     dataset = []
+#     with open(jsonl_path, "r", encoding="utf-8") as f:
+#         for line in tqdm(f, desc="Loading JSONL"):
+#             example = json.loads(line)
 
-            # ✅ Only include if accuracy is 1 or -1
-            if example.get("accuracy") not in [-1, 1]:
-                continue
+#             # ✅ Only include if accuracy is 1 or -1
+#             if example.get("accuracy") not in [-1, 1]:
+#                 continue
 
-            user_msg = None
-            for msg in example["messages"]:
-                if msg["role"] == "user":
-                    user_msg = [{"type": "text", "text": msg["content"]}]
-                    break
-            if not user_msg:
-                continue
+#             user_msg = None
+#             for msg in example["messages"]:
+#                 if msg["role"] == "user":
+#                     user_msg = [{"type": "text", "text": msg["content"]}]
+#                     break
+#             if not user_msg:
+#                 continue
 
-            messages = [
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": [{"type": "text", "text": example["finetune_output"]}, {"type": "image", "image": None}]}
-            ]
-            dataset.append({"messages": messages})
+#             messages = [
+#                 {"role": "user", "content": user_msg},
+#                 {"role": "assistant", "content": [{"type": "text", "text": example["finetune_output"]}, {"type": "image", "image": None}]}
+#             ]
+#             dataset.append({"messages": messages})
 
-    with open(save_as, "wb") as f:
-        pickle.dump(dataset, f)
+#     with open(save_as, "wb") as f:
+#         pickle.dump(dataset, f)
 
-    print(f"✅ Saved {len(dataset)} examples with accuracy == 1 or -1 to {save_as}")
-    return dataset
-
-
+#     print(f"✅ Saved {len(dataset)} examples with accuracy == 1 or -1 to {save_as}")
+#     return dataset
 
 def load_model():
     model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
@@ -92,9 +90,10 @@ def run_training(train_data, model, tokenizer):
         save_strategy="epoch",
         save_total_limit=1,
         report_to="wandb",
-        run_name="cragmm-vision-lora2",
+        run_name="cragmm-vision-lora2-E",
         logging_steps=10,
         dataset_text_field="messages",
+        # dataset_text_field=None,
         dataset_kwargs={"skip_prepare_dataset": True},
         remove_unused_columns=False,
         max_seq_length=8192,
