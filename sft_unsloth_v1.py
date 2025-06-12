@@ -93,7 +93,7 @@ print("Total examples:", len(train_conv))
 
 # # 5) Load & prepare model
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
-model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=False, use_gradient_checkpointing="unsloth")
+model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=True, use_gradient_checkpointing="unsloth")
 FastVisionModel.for_training(model)
 model = FastVisionModel.get_peft_model(
     model,
@@ -118,25 +118,19 @@ class GPUStats(TrainerCallback):
 
 # 7) Configure & run SFTTrainer
 config = SFTConfig(
-    per_device_train_batch_size=32,
+    per_device_train_batch_size=32, # 32-48
     gradient_accumulation_steps=8,
     num_train_epochs=3,
-    learning_rate=1e-4,
-    optim="adamw_torch",                # <- full precision optimizer
-    bf16=False,                         # <- force full precision
-    fp16=False,
-    save_strategy="epoch", 
-    save_total_limit=1,
-    report_to="wandb", 
-    run_name="cragmm-vision-16bit",
-    logging_steps=10,
-    logging_dir="./logs",
+    learning_rate=1e-4, # 1e-4, 5e-5, 2e-4
+    optim="adamw_8bit",
+    bf16=is_bf16_supported(), fp16=False,
+    save_strategy="epoch", save_total_limit=1,
+    report_to="wandb", run_name="cragmm-vision-lora2", logging_steps=10,
     dataset_text_field="messages",
-    dataset_kwargs={"skip_prepare_dataset": True},
+    dataset_kwargs={"skip_prepare_dataset":True},
     remove_unused_columns=False,
     max_seq_length=8192,
 )
-
 
 trainer = SFTTrainer(
     model=model,
@@ -149,6 +143,6 @@ trainer = SFTTrainer(
 
 wandb.watch(model, log="all", log_freq=50)
 trainer.train()
-model.save_pretrained("llama3-vision-finetuned_full")
-tokenizer.save_pretrained("llama3-vision-finetuned_full")
+model.save_pretrained("llama3-vision-finetuned")
+tokenizer.save_pretrained("llama3-vision-finetuned")
 
