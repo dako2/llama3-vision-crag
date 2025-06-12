@@ -13,3 +13,10 @@ with open("sft_dataset.pkl", "rb") as f:
 
 # Print the 5th example
 print(train_conv[4])
+
+from sft_unsloth import load_sft_dataset, load_model, run_training
+# Step 2: Load model and tokenizer
+model, tokenizer = load_model()
+
+# Step 3: Start training
+run_training(train_conv, model, tokenizer)
