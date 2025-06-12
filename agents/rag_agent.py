@@ -540,6 +540,109 @@ class SimpleRAGAgent(BaseAgent):
 
         return responses
 
+    def inference_w_image(
+        self, 
+        session_ids,
+        search_results_batch,
+        queries: List[str], 
+        images: List[Image.Image], 
+        image_summaries: List[str],
+        message_histories: List[List[Dict[str, Any]]],
+        save_sft_data_path: str,
+    ) -> List[dict]:
+
+        # Prepare formatted inputs with RAG context for each query
+        inputs = []
+        messages_batch = []
+        for idx, (query, image, message_history, search_results, caption) in enumerate(
+            zip(queries, images, message_histories, search_results_batch, image_summaries)
+        ):
+            # Create system prompt with RAG guidelines
+            # SYSTEM_PROMPT = ("You are a helpful assistant that truthfully answers user questions about the provided image."
+            #                "Keep your response concise and to the point. If you don't know the answer, respond with 'I don't know'.")
+            
+            system_prompt = """You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."""
+            #user_prompt = """Context information is below. {context_str} Given the context information and using your prior knowledge, please provide your answer in concise style. End your answer with a period. Answer the question in one line only. Question: {query_str} Answer: """
+            user_prompt = (
+                "Given the context below and the image, answer the question truthfully in one line. "
+                "Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
+                "##Image Caption: {caption}\n"
+                "##Some Context: {context_str}\n"
+                "##Question: {query_str}\n"
+                "##Answer:"
+            )
+
+            # Add retrieved context if available
+            rag_context = ""
+            if search_results:
+                for i, result in enumerate(search_results):
+                    # WebSearchResult is a helper class to get the full page content of a web search result.
+                    #
+                    # It first checks if the page content is already available in the cache. If not, it fetches  
+                    # the full page content and caches it.
+                    #
+                    # WebSearchResult adds `page_content` attribute to the result dictionary where the page 
+                    # content is stored. You can use it like a regular dictionary to fetch other attributes.
+                    #
+                    # result["page_content"] for complete page content, this is available only via WebSearchResult
+                    # result["page_url"] for page URL
+                    # result["page_name"] for page title
+                    # result["page_snippet"] for page snippet
+                    # result["score"] relavancy with the search query
+                    result = WebSearchResult(result)
+                    snippet = result.get('page_snippet', '')
+                    if snippet:
+                        rag_context += f"[Info {i+1}] {snippet}\n\n"
+                
+            # Structure messages with image and RAG context
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": [{"type": "image"}]}
+            ]
+            
+            # Add conversation history for multi-turn conversations
+            if message_history:
+                messages = messages + message_history
+            
+            # Add the current query
+            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
+            
+            # Apply chat template
+            formatted_prompt = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            
+            inputs.append({
+                "prompt": formatted_prompt,
+                "multi_modal_data": {
+                    "image": image
+                }
+            })
+            messages_batch.append(messages)
+
+
+        # Step 3: Generate responses using the batch of RAG-enhanced prompts
+        print(f"Generating responses for {len(inputs)} queries")
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=MAX_GENERATION_TOKENS,
+                skip_special_tokens=True
+            )
+        ) 
+
+        # Extract and return the generated responses
+        responses = [output.outputs[0].text for output in outputs]
+        print(f"Successfully generated {len(responses)} responses")
+        
+        for session_id, answer, history in zip(session_ids, responses, messages_batch): 
+            self._log_for_sft(session_id, answer, history, file_path=save_sft_data_path) #"sft_response_data_case_2.jsonl"
+
+        return responses
     def batch_generate_response(
         self,
         session_ids, 
@@ -609,14 +712,19 @@ class SimpleRAGAgent(BaseAgent):
         # )
         # print("Case1",responses)
 
-        # search_results = self.prepare_rag_enhanced_inputs_with_rephrase(session_ids, 
-        #     queries, images, image_summaries, message_histories
-        # )
+        search_results = self.prepare_rag_enhanced_inputs_with_rephrase(session_ids, 
+            queries, images, image_summaries, message_histories
+        )
         
-        # responses = self.inference(session_ids, search_results, # case 5: context from web search (with rephrased keywords), image captions, on image
-        #     queries, images, image_summaries, message_histories, save_sft_data_path="sft_response_data_case_5_web_search_rephrase.jsonl"
-        # )
-        # print("Case5",responses)
+        responses = self.inference(session_ids, search_results, # case 5: context from web search (with rephrased keywords), image captions, on image
+            queries, images, image_summaries, message_histories, save_sft_data_path="validation_sft_response_data_case_5_web_search_rephrase.jsonl"
+        )
+        print("Case5",responses)
+
+        responses = self.inference_w_image(session_ids, search_results, # case 5: context from web search (with rephrased keywords), image captions, on image
+            queries, images, image_summaries, message_histories, save_sft_data_path="validation_sft_response_data_case_5b_web_search_rephrase_w_image.jsonl"
+        )
+        print("Case5b",responses)
 
         # combined_results = []
         # for image_result, web_research in zip(image_search_results, search_results):

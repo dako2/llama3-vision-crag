@@ -19,7 +19,7 @@ search_pipeline = UnifiedSearchPipeline(
     image_hf_dataset_id="crag-mm-2025/image-search-index-validation",
 )
  
-agent = SimpleRAGAgent(search_pipeline)      # vLLM spawns here
+agent = SimpleRAGAgent(search_pipeline, model_name = "./llama3-vision-finetuned")      # vLLM spawns here
 
 from datasets import load_dataset
 from itertools import islice

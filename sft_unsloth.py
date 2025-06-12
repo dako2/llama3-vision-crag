@@ -39,7 +39,6 @@ IMAGE_MAP = {ex["session_id"]: ex["image"] for ex in crag_ds}
 TARGET_W, TARGET_H = 960, 1280
 
 def resize_image(img: Image.Image) -> Image.Image:
-    print("aa")
     if img.size != (TARGET_W, TARGET_H):
         return img.resize((TARGET_W, TARGET_H), Image.LANCZOS)
     return img
