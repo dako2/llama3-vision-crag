@@ -67,7 +67,7 @@ config = SFTConfig(
     per_device_train_batch_size=1,
     gradient_accumulation_steps=8,
     num_train_epochs=3,
-    learning_rate=2e-4,
+    learning_rate=1e-4, # 1e-4, 5e-5, 2e-4
     optim="adamw_8bit",
     bf16=is_bf16_supported(), fp16=False,
     save_strategy="epoch", save_total_limit=1,

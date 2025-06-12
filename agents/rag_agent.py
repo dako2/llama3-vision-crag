@@ -247,7 +247,9 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = "Honestly answer the user's tricky question based on the image. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
+        # summarize_prompt = "Honestly answer the user's tricky question based on the image. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
+        summarize_prompt = "You are a helpful and honest assistant. Please, respond concisely and truthfully. There is no need to explain the reasoning behind your answers."
+        # 2024: You are a helpful and honest assistant. Please, respond concisely and truthfully in {token_limit} words or less. If you are not sure about the query, answer I don’t know. There is no need to explain the reasoning behind your answers. "
         
         inputs = []
         messages_batch = []
@@ -278,7 +280,7 @@ class SimpleRAGAgent(BaseAgent):
             sampling_params=vllm.SamplingParams(
                 temperature=0.1,
                 top_p=0.9,
-                max_tokens=65,  # Short summary only
+                max_tokens=150,  # Short summary only
                 skip_special_tokens=True
             )
         )

@@ -1,10 +1,27 @@
-import os, requests, json
+import os
+import sys
+import json
+import logging
+import requests
 from typing import Any, Dict
 from datasets import Dataset
 from dotenv import load_dotenv
 
-# === Config ===
-JSONL_FILE = "./your_predictions.jsonl"  # ✅ path to your prediction .jsonl
+# === Logging Setup ===
+logging.basicConfig(
+    filename='crag_eval.log',
+    filemode='a',
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+console = logging.StreamHandler(sys.stdout)
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console.setFormatter(formatter)
+logging.getLogger('').addHandler(console)
+
+logger = logging.getLogger(__name__)
+logger.info("✅ Logging initialized for evaluation.py")
 
 # === Grok API Config ===
 load_dotenv()
@@ -14,6 +31,7 @@ HEADERS = {
     "Authorization": f"Bearer {XAI_KEY}",
     "Content-Type": "application/json"
 }
+logger.info(f"Loaded XAI key: {bool(XAI_KEY)}")
 
 # === Evaluation Prompt ===
 EVAL_SYSTEM_PROMPT = (
@@ -46,40 +64,33 @@ class CRAGEvaluator:
                 for sid in session_ids:
                     self.dataset_lookup[sid] = entry
 
-
     def evaluate_one_jsonl_line(self, jsonl_line: Dict[str, Any]) -> Dict[str, float]:
         session_id = jsonl_line.get("session_id")
         messages = jsonl_line.get("messages", [])
 
-        # Extract assistant response
         assistant_msg = next((m for m in messages if m["role"] == "assistant"), None)
         agent_response = assistant_msg["content"].strip() if assistant_msg else ""
 
-        # Extract user query
         user_msg = next((m for m in messages if m["role"] == "user"), None)
         query = ""
         if user_msg:
             parts = user_msg.get("content", [])
             query = next((p["text"] for p in parts if isinstance(p, dict) and p.get("type") == "text"), "")
 
-        # ✅ Lookup ground truth via session_id (now using interaction_id)
         gt_entry = self.dataset_lookup.get(session_id)
         if not gt_entry:
-            print(f"[Eval] Missing ground truth for session_id: {session_id}")
+            logger.warning(f"[Eval] Missing ground truth for session_id: {session_id}")
             return {"accuracy": -1}
 
         ground_truths = gt_entry.get("ans_full", [])
         ground_truth = ground_truths[0] if ground_truths else ""
 
-        # Rule 0: Explicit IDK check
         if agent_response.lower().strip() in {"i don't know.", "i don't know", "no idea", "i have no idea"}:
             return {"accuracy": 0}
 
-        # Rule 1: Exact match
         if agent_response.strip().lower() == ground_truth.strip().lower():
             return {"accuracy": 1}
 
-        # Rule 2–4: Grok evaluation
         messages = [
             {"role": "system", "content": EVAL_SYSTEM_PROMPT},
             {
@@ -90,23 +101,20 @@ class CRAGEvaluator:
 
         try:
             response = grok_chat(messages, model=self.eval_model_name, temperature=0.0)
+            logger.info(f"[Eval] session={session_id}\nQ: {query}\nGT: {ground_truth}\nPred: {agent_response}\nGrok: {response}")
             parsed = json.loads(response)
             accuracy = parsed.get("accuracy")
             if accuracy in {1, -1, 0, -0.5}:
                 return {"accuracy": accuracy}
             else:
-                print(f"[Eval] Invalid accuracy value returned: {accuracy}")
+                logger.error(f"[Eval] Invalid accuracy value returned: {accuracy}")
                 return {"accuracy": -1}
         except Exception as exc:
-            print(f"[Eval] Grok error for session {session_id}: {exc}")
+            logger.exception(f"[Eval] Grok error for session {session_id}: {exc}")
             return {"accuracy": -1}
-    
+
     @classmethod
     def from_jsonl(cls, gt_jsonl_path: str, eval_model_name: str = "grok-3"):
-        """
-        Create a CRAGEvaluator from a local .jsonl ground truth file
-        that contains {"session_id": ..., "ans_full": [...]} per line.
-        """
         dataset_lookup = {}
         with open(gt_jsonl_path, "r", encoding="utf-8", errors="replace") as f:
             for line in f:
@@ -115,7 +123,6 @@ class CRAGEvaluator:
                 if sid:
                     dataset_lookup[sid] = entry
 
-        # Create an instance and override lookup dictionary
         instance = cls(dataset=None, eval_model_name=eval_model_name)
         instance.dataset_lookup = dataset_lookup
         return instance
