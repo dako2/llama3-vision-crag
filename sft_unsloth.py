@@ -13,20 +13,20 @@ from trl import SFTTrainer, SFTConfig
 from transformers import TrainerCallback
 import pickle
 import os
+from datasets import load_dataset
+
 # 0) W&B login
 wandb.login()
 wandb.init()
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-def load_sft_dataset(pickle_path="sft_dataset.pkl"):
-    # update to load jon for training data
-
-train_conv = load_sft_dataset("sft_dataset.pkl")
-print(train_conv[-1])
-print(len(train_conv))
-
+# If it's JSONL (1 JSON object per line)
+train_conv = load_dataset("json", data_files="sft_data.jsonl", split="train")
+print(train_conv[0])
+print("train_conv len:",len(train_conv))
 # # 5) Load & prepare model
+
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
 model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=True, use_gradient_checkpointing="unsloth")
 FastVisionModel.for_training(model)
@@ -53,26 +53,31 @@ class GPUStats(TrainerCallback):
 
 # 7) Configure & run SFTTrainer
 config = SFTConfig(
-    per_device_train_batch_size=32, # 32-48
-    gradient_accumulation_steps=8,
-    num_train_epochs=3,
-    learning_rate=1e-4, # 1e-4, 5e-5, 2e-4
-    optim="adamw_8bit",
-    bf16=is_bf16_supported(), fp16=False,
-    save_strategy="epoch", save_total_limit=1,
-    report_to="wandb", run_name="cragmm-vision-lora2", logging_steps=10,
-    dataset_text_field="messages",
-    dataset_kwargs={"skip_prepare_dataset":True},
-    remove_unused_columns=False,
-    max_seq_length=8192,
+    per_device_train_batch_size = 32,
+    gradient_accumulation_steps = 4,
+    num_train_epochs = 3,
+    learning_rate = 1e-4,
+    optim = "adamw_8bit",
+    bf16 = True,
+    fp16 = False,
+    save_strategy = "epoch",
+    save_total_limit = None,
+    report_to = "wandb",
+    run_name = "llama3-h100-lora",
+    logging_steps = 10,
+    dataset_text_field = "messages",
+    dataset_kwargs = {"skip_prepare_dataset": True},
+    remove_unused_columns = False,
+    max_seq_length = 8192,
 )
+
 
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     args=config,
     train_dataset=train_conv,                     # <-- list of dicts, no None
-    data_collator=UnslothVisionDataCollator(model, tokenizer),
+    data_collator=None, #UnslothVisionDataCollator(model, tokenizer),
     callbacks=[GPUStats()],
 )
 
