@@ -76,7 +76,7 @@ trainer = SFTTrainer(
     args=config,
     train_dataset=train_conv,
     # FIXED: Pass the required arguments to the data collator
-    data_collator=UnslothVisionDataCollator(model=model, processor=tokenizer),
+    #data_collator=UnslothVisionDataCollator(model=model, processor=tokenizer),
     callbacks=[GPUStats()],
 )
 
