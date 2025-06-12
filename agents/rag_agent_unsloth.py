@@ -92,7 +92,7 @@ def convert_messages_from_vllm_to_unsloth_format(messages: List[Dict[str, Any]])
 
 
 # Configuration constants
-AICROWD_SUBMISSION_BATCH_SIZE = 2
+AICROWD_SUBMISSION_BATCH_SIZE = 8
 
 # GPU utilization settings 
 # Change VLLM_TENSOR_PARALLEL_SIZE during local runs based on your available GPUs
@@ -875,7 +875,7 @@ class SimpleRAGAgent(BaseAgent):
         )
         
         responses = self.inference(session_ids, search_results, # case 5: context from web search (with rephrased keywords), image captions, on image
-            queries, images, image_summaries, message_histories, save_sft_data_path="validation_sft_response_data_case_5_web_search_rephrase.jsonl"
+            queries, images, image_summaries, message_histories, save_sft_data_path="validation_sft_response_data_case_5_web_search_rephrase_wo_image.jsonl"
         )
         print("Case5",responses)
 
