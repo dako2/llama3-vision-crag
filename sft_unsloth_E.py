@@ -21,8 +21,8 @@ def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", s
         for line in tqdm(f, desc="Loading JSONL"):
             example = json.loads(line)
 
-            # ✅ Only include if accuracy == -1
-            if example.get("accuracy") != -1:
+            # ✅ Only include if accuracy is 1 or -1
+            if example.get("accuracy") not in [-1, 1]:
                 continue
 
             user_msg = None
@@ -42,8 +42,9 @@ def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", s
     with open(save_as, "wb") as f:
         pickle.dump(dataset, f)
 
-    print(f"✅ Saved {len(dataset)} examples with accuracy == -1 to {save_as}")
+    print(f"✅ Saved {len(dataset)} examples with accuracy == 1 or -1 to {save_as}")
     return dataset
+
 
 
 def load_model():
