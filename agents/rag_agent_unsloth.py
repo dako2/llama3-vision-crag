@@ -8,7 +8,6 @@ from agents.base_agent import BaseAgent
 from cragmm_search.search import UnifiedSearchPipeline
 
 from crag_web_result_fetcher import WebSearchResult
-import vllm
 
 import json
 from pathlib import Path
