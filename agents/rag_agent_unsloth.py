@@ -1,6 +1,7 @@
 from typing import Dict, List, Any
 import os
-
+import unsloth
+from unsloth import FastVisionModel
 import torch
 from PIL import Image
 from agents.base_agent import BaseAgent
