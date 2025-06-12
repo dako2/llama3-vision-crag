@@ -15,41 +15,78 @@ import time
 
 max_tokens = 75
 
+# oyiyi muted
+# def convert_messages_from_vllm_to_unsloth_format(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+#     """
+#     Converts a VLLM-style chat message history into a Unsloth-compatible format.
+#     - Merges system/user/assistant messages into a single `user` prompt.
+#     - Appends image and formatted text.
+#     """
+#     image = None
+#     parts = []
+
+#     for m in messages:
+#         role = m["role"]
+#         content = m["content"]
+
+#         if role == "user" and isinstance(content, list):
+#             # Look for image in multimodal messages
+#             for part in content:
+#                 if part.get("type") == "image":
+#                     image = {"type": "image"}
+#                 elif part.get("type") == "text":
+#                     parts.append(part["text"])
+#         elif role in {"system", "user", "assistant"} and isinstance(content, str):
+#             # Just append the text parts from all roles except image parts
+#             parts.append(f"[{role.upper()}] {content}")
+
+#     merged_text = "\n".join(parts).strip()
+
+#     unsloth_message = {
+#         "role": "user",
+#         "content": []
+#     }
+
+#     if image:
+#         unsloth_message["content"].append(image)
+
+#     unsloth_message["content"].append({"type": "text", "text": merged_text})
+
+#     return [unsloth_message]
+
 def convert_messages_from_vllm_to_unsloth_format(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Converts a VLLM-style chat message history into a Unsloth-compatible format.
-    - Merges system/user/assistant messages into a single `user` prompt.
-    - Appends image and formatted text.
+    Converts VLLM-style message history into Unsloth-compatible format.
+    Ensures image comes first in multimodal content.
     """
-    image = None
-    parts = []
+    unsloth_message = {
+        "role": "user",
+        "content": []
+    }
+
+    found_image = False
+    text_parts = []
 
     for m in messages:
         role = m["role"]
         content = m["content"]
 
         if role == "user" and isinstance(content, list):
-            # Look for image in multimodal messages
             for part in content:
                 if part.get("type") == "image":
-                    image = {"type": "image"}
+                    if not found_image:
+                        unsloth_message["content"].append({"type": "image"})
+                        found_image = True
                 elif part.get("type") == "text":
-                    parts.append(part["text"])
-        elif role in {"system", "user", "assistant"} and isinstance(content, str):
-            # Just append the text parts from all roles except image parts
-            parts.append(f"[{role.upper()}] {content}")
+                    text_parts.append(part["text"])
+        elif isinstance(content, str):
+            text_parts.append(f"[{role.upper()}] {content}")
 
-    merged_text = "\n".join(parts).strip()
+    merged_text = "\n".join(text_parts).strip()
 
-    unsloth_message = {
-        "role": "user",
-        "content": []
-    }
-
-    if image:
-        unsloth_message["content"].append(image)
-
-    unsloth_message["content"].append({"type": "text", "text": merged_text})
+    # Add text after image, always
+    if merged_text:
+        unsloth_message["content"].append({"type": "text", "text": merged_text})
 
     return [unsloth_message]
 
@@ -603,16 +640,36 @@ class SimpleRAGAgent(BaseAgent):
             
 
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
-            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            
+            # Oyiyi replaced below 2
+            # prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            # input_tensor = self.tokenizer(
+            #     image,
+            #     prompt,
+            #     add_special_tokens=False,
+            #     return_tensors="pt",
+            #     truncation=True,
+            #     max_new_tokens=max_tokens,
+            #     #max_length=8192,
+            # ).to(self.device)
+
+            # Format with chat template
+            prompt = self.tokenizer.apply_chat_template(
+                new_messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+
+            # Ensure image is properly included and tokenizer receives both inputs
             input_tensor = self.tokenizer(
-                image,
-                prompt,
-                add_special_tokens=False,
+                text=prompt,
+                image=image,
                 return_tensors="pt",
                 truncation=True,
                 max_new_tokens=max_tokens,
-                #max_length=8192,
+                max_length=8192,
             ).to(self.device)
+
 
             output = self.model.generate(
                 **input_tensor,
