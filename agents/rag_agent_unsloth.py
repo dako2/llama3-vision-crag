@@ -154,7 +154,11 @@ class SimpleRAGAgent(BaseAgent):
         )
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
+        
+        # self.model.to(self.device)
+        # Only call .to(self.device) if model is NOT loaded in 4bit or 8bit mode
+        if not getattr(self.model, "is_loaded_in_4bit", False) and not getattr(self.model, "is_loaded_in_8bit", False):
+            self.model.to(self.device)
         
         #self.model.load_adapter("llama3-vision-finetuned/", adapter_name="qa")
         #self.model.load_adapter("trainer_output/checkpoint-186", adapter_name="qa")
