@@ -1,4 +1,8 @@
 .env
 __pycache__/
+<<<<<<< HEAD
 unsloth_compiled_cache
+=======
+results/*.pkl
+>>>>>>> 515bb3ba4ebfe74deef316742ded09c68e8212f7
 
