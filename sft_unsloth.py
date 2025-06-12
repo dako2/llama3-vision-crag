@@ -28,7 +28,7 @@ print("train_conv len:",len(train_conv))
 # # 5) Load & prepare model
 
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
-model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=True, use_gradient_checkpointing="unsloth")
+model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=False, use_gradient_checkpointing="unsloth")
 FastVisionModel.for_training(model)
 model = FastVisionModel.get_peft_model(
     model,
@@ -52,6 +52,7 @@ class GPUStats(TrainerCallback):
                 }, step=state.global_step)
 
 # 7) Configure & run SFTTrainer
+#    FIXED: Removed dataset_kwargs and remove_unused_columns
 config = SFTConfig(
     per_device_train_batch_size = 32,
     gradient_accumulation_steps = 4,
@@ -65,10 +66,10 @@ config = SFTConfig(
     report_to = "wandb",
     run_name = "llama3-h100-lora",
     logging_steps = 10,
-    dataset_text_field = "messages",
-    dataset_kwargs = {"skip_prepare_dataset": True},
-    remove_unused_columns = False,
+    dataset_text_field = "messages", # This tells the trainer to tokenize this field
     max_seq_length = 8192,
+    # REMOVED: dataset_kwargs = {"skip_prepare_dataset": True}
+    # REMOVED: remove_unused_columns = False (let the trainer handle it)
 )
 
 
@@ -76,13 +77,16 @@ trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     args=config,
-    train_dataset=train_conv,                     # <-- list of dicts, no None
-    data_collator=None, #UnslothVisionDataCollator(model, tokenizer),
+    train_dataset=train_conv,
+    data_collator=UnslothVisionDataCollator(), # FIXED: Use the correct data collator
     callbacks=[GPUStats()],
 )
 
 wandb.watch(model, log="all", log_freq=50)
+print("Starting training...")
 trainer.train()
+print("Training finished.")
+
+# Save the final model
 model.save_pretrained("llama3-vision-finetuned")
 tokenizer.save_pretrained("llama3-vision-finetuned")
-
