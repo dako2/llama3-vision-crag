@@ -15,7 +15,7 @@ import time
 
 
 # Configuration constants
-AICROWD_SUBMISSION_BATCH_SIZE = 2
+AICROWD_SUBMISSION_BATCH_SIZE = 8
 
 # GPU utilization settings 
 # Change VLLM_TENSOR_PARALLEL_SIZE during local runs based on your available GPUs
@@ -29,7 +29,7 @@ VLLM_GPU_MEMORY_UTILIZATION = 0.95
 
 # These are model specific parameters to get the model to run on a single NVIDIA L40s GPU
 MAX_MODEL_LEN = 8192
-MAX_NUM_SEQS = 2
+MAX_NUM_SEQS = 8
 MAX_GENERATION_TOKENS = 75
 
 # Number of search results to retrieve

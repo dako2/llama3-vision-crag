@@ -29,7 +29,7 @@ from itertools import islice
 ############################
 # Config
 ############################
-BATCH_SIZE = 8                    # ← change to fit GPU/VRAM
+BATCH_SIZE = 16                    # ← change to fit GPU/VRAM
 SPLIT      = "validation"         # or "public_test", etc.
 
 
@@ -41,7 +41,7 @@ ds = load_dataset(
     split=SPLIT,
     streaming=False,              # set True if RAM is tight
 )
-ds = ds.select(range(8))
+# ds = ds.select(range(8)) # when only run the first 8 samples
 ############################
 # 2.  Mini helper for batching
 ############################
