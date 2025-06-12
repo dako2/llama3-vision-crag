@@ -112,5 +112,5 @@ def run_training(train_data, model, tokenizer):
     wandb.watch(model, log="all", log_freq=50)
     trainer.train()
 
-    model.save_pretrained("llama3-vision-finetuned")
-    tokenizer.save_pretrained("llama3-vision-finetuned")
+    model.save_pretrained("llama3-vision-finetuned_E")
+    tokenizer.save_pretrained("llama3-vision-finetuned_E")
