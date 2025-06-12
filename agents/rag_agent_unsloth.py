@@ -312,7 +312,7 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
-                # {"role": "system", "content": summarize_prompt},
+                # {"role": "system", "content": summarize_prompt}, # Oyiyi
                 {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt}{query}."}]},
             ]
             
@@ -695,7 +695,7 @@ class SimpleRAGAgent(BaseAgent):
                 
             # Structure messages with image and RAG context
             messages = [
-                {"role": "system", "content": system_prompt},
+                # {"role": "system", "content": system_prompt}, # Oyiyi
                 {"role": "user", "content": [{"type": "image"}]}
             ]
             
@@ -704,7 +704,7 @@ class SimpleRAGAgent(BaseAgent):
                 messages = messages + message_history
             
             # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
+            messages.append({"role": "user", "content": f"{system_prompt}\n" + user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
             # Apply chat template
             
