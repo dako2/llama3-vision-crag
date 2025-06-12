@@ -85,7 +85,7 @@ trainer = SFTTrainer(
     args=training_args,
     train_dataset=train_conv,
     # Use the UnslothVisionDataCollator to correctly handle text and image (None) inputs
-    data_collator=UnslothVisionDataCollator(),
+    data_collator=UnslothVisionDataCollator(model, tokenizer),
     callbacks=[GPUStats()],
 )
 
