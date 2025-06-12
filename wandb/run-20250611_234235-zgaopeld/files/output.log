@@ -1,0 +1,16 @@
+Generating train split: 884 examples [00:00, 45438.85 examples/s]
+Preparing training examples: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 884/884 [00:00<00:00, 15732.80it/s]
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 103, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 100, in load_sft_dataset
+    raise RuntimeError("No training examples were created – check filters!")
+RuntimeError: No training examples were created – check filters!
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 103, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 100, in load_sft_dataset
+    raise RuntimeError("No training examples were created – check filters!")
+RuntimeError: No training examples were created – check filters!

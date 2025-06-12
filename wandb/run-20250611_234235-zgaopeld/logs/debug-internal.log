@@ -1,0 +1,15 @@
+{"time":"2025-06-11T23:42:35.395865326-07:00","level":"INFO","msg":"stream: starting","core version":"0.19.11","symlink path":"/home/dako/Documents/meta_crag_submissions/llama3_new/wandb/run-20250611_234235-zgaopeld/logs/debug-core.log"}
+{"time":"2025-06-11T23:42:35.655149575-07:00","level":"INFO","msg":"created new stream","id":"zgaopeld"}
+{"time":"2025-06-11T23:42:35.655202846-07:00","level":"INFO","msg":"stream: started","id":"zgaopeld"}
+{"time":"2025-06-11T23:42:35.655239666-07:00","level":"INFO","msg":"writer: Do: started","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:35.655253322-07:00","level":"INFO","msg":"sender: started","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:35.655286214-07:00","level":"INFO","msg":"handler: started","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:35.842988619-07:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-06-11T23:42:38.306888943-07:00","level":"INFO","msg":"stream: closing","id":"zgaopeld"}
+{"time":"2025-06-11T23:42:38.306931354-07:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-06-11T23:42:38.307022967-07:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-06-11T23:42:38.762077798-07:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-06-11T23:42:38.949857809-07:00","level":"INFO","msg":"handler: closed","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:38.949897765-07:00","level":"INFO","msg":"writer: Close: closed","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:38.949930026-07:00","level":"INFO","msg":"sender: closed","stream_id":"zgaopeld"}
+{"time":"2025-06-11T23:42:38.949987926-07:00","level":"INFO","msg":"stream: closed","id":"zgaopeld"}

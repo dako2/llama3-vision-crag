@@ -1,0 +1,73 @@
+Preparing training examples:   4%|█████▌                                                                                                                                  | 36/884 [01:00<23:55,  1.69s/it]
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 84, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 68, in load_sft_dataset
+    img = find_image_from_session_id(row["session_id"])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 40, in find_image_from_session_id
+    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 40, in <genexpr>
+    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+                                   ^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2387, in __iter__
+    formatted_output = format_table(
+                       ^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 653, in format_table
+    return formatter(pa_table, query_type=query_type)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 406, in __call__
+    return self.format_row(pa_table)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 455, in format_row
+    row = self.python_features_decoder.decode_row(row)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 223, in decode_row
+    return self.features.decode_example(row, token_per_repo_id=self.token_per_repo_id) if self.features else row
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 2101, in decode_example
+    column_name: decode_nested_example(feature, value, token_per_repo_id=token_per_repo_id)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 1414, in decode_nested_example
+    return schema.decode_example(obj, token_per_repo_id=token_per_repo_id) if obj is not None else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/image.py", line 187, in decode_example
+    image.load()  # to avoid "Too many open files" errors
+    ^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/PIL/ImageFile.py", line 389, in load
+    n, err_code = decoder.decode(b)
+                  ^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 84, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 68, in load_sft_dataset
+    img = find_image_from_session_id(row["session_id"])
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 40, in find_image_from_session_id
+    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 40, in <genexpr>
+    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+                                   ^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2387, in __iter__
+    formatted_output = format_table(
+                       ^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 653, in format_table
+    return formatter(pa_table, query_type=query_type)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 406, in __call__
+    return self.format_row(pa_table)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 455, in format_row
+    row = self.python_features_decoder.decode_row(row)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/formatting.py", line 223, in decode_row
+    return self.features.decode_example(row, token_per_repo_id=self.token_per_repo_id) if self.features else row
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 2101, in decode_example
+    column_name: decode_nested_example(feature, value, token_per_repo_id=token_per_repo_id)
+

@@ -1,0 +1,64 @@
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 105, in <module>
+    ).cast_column("image", Image)  # keep PIL objects
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2117, in cast_column
+    return self.cast(features)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2058, in cast
+    schema = features.arrow_schema
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 1825, in arrow_schema
+    hf_metadata = {"info": {"features": self.to_dict()}}
+                                        ^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 1892, in to_dict
+    return asdict(self)
+           ^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 230, in asdict
+    return _asdict_inner(obj)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 223, in _asdict_inner
+    return {_asdict_inner(k): _asdict_inner(v) for k, v in obj.items()}
+                              ^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 225, in _asdict_inner
+    return copy.deepcopy(obj)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/copy.py", line 151, in deepcopy
+    rv = reductor(4)
+         ^^^^^^^^^^^
+TypeError: cannot pickle 'module' object
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 105, in <module>
+    ).cast_column("image", Image)  # keep PIL objects
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2117, in cast_column
+    return self.cast(features)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2058, in cast
+    schema = features.arrow_schema
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 1825, in arrow_schema
+    hf_metadata = {"info": {"features": self.to_dict()}}
+                                        ^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/features/features.py", line 1892, in to_dict
+    return asdict(self)
+           ^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 230, in asdict
+    return _asdict_inner(obj)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 223, in _asdict_inner
+    return {_asdict_inner(k): _asdict_inner(v) for k, v in obj.items()}
+                              ^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 225, in _asdict_inner
+    return copy.deepcopy(obj)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/copy.py", line 151, in deepcopy
+    rv = reductor(4)
+         ^^^^^^^^^^^
+TypeError: cannot pickle 'module' object

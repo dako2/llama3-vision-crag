@@ -48,6 +48,7 @@ def load_sft_dataset(jsonl_path="results/selected_pipeline_finetune_data_final.j
         assistant_text = row["finetune_output"].strip()
 
         samples.append({
+            "session_id": row["session_id"],
             "messages": [
                 OrderedDict([
                     ("role", "user"),
@@ -67,3 +68,5 @@ if __name__ == "__main__":
     out_path = "sft_data.jsonl"
     sft_ds.to_json(out_path)
     print(f"✅ Saved {len(sft_ds)} examples → {out_path}")
+
+
