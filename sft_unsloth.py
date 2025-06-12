@@ -28,7 +28,7 @@ print("train_conv len:",len(train_conv))
 # # 5) Load & prepare model
 
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
-model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=False, use_gradient_checkpointing="unsloth")
+model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=True, use_gradient_checkpointing="unsloth")
 FastVisionModel.for_training(model)
 model = FastVisionModel.get_peft_model(
     model,
@@ -50,9 +50,9 @@ class GPUStats(TrainerCallback):
                   f"gpu{i}_alloc": torch.cuda.memory_allocated(i)/1e9,
                   f"gpu{i}_reserved": torch.cuda.memory_reserved(i)/1e9,
                 }, step=state.global_step)
+# (Your script remains the same up to this point)
 
 # 7) Configure & run SFTTrainer
-#    FIXED: Removed dataset_kwargs and remove_unused_columns
 config = SFTConfig(
     per_device_train_batch_size = 32,
     gradient_accumulation_steps = 4,
@@ -66,19 +66,17 @@ config = SFTConfig(
     report_to = "wandb",
     run_name = "llama3-h100-lora",
     logging_steps = 10,
-    dataset_text_field = "messages", # This tells the trainer to tokenize this field
+    dataset_text_field = "messages",
     max_seq_length = 8192,
-    # REMOVED: dataset_kwargs = {"skip_prepare_dataset": True}
-    # REMOVED: remove_unused_columns = False (let the trainer handle it)
 )
-
 
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     args=config,
     train_dataset=train_conv,
-    data_collator=UnslothVisionDataCollator(), # FIXED: Use the correct data collator
+    # FIXED: Pass the required arguments to the data collator
+    #data_collator=UnslothVisionDataCollator(model=model, processor=tokenizer),
     callbacks=[GPUStats()],
 )
 
