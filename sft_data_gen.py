@@ -11,7 +11,7 @@ from collections import defaultdict
 from itertools import islice
 
 from remote_search_pipeline import RemoteSearchPipeline
-from agents.rag_agent_unsloth import SimpleRAGAgent
+from agents.rag_agent import SimpleRAGAgent
 
 from cragmm_search.search import UnifiedSearchPipeline
 search_pipeline = UnifiedSearchPipeline(
@@ -21,7 +21,7 @@ search_pipeline = UnifiedSearchPipeline(
     image_hf_dataset_id="crag-mm-2025/image-search-index-validation",
 )
  
-agent = SimpleRAGAgent(search_pipeline, model_name = "./llama3-vision-finetuned")      # vLLM spawns here
+agent = SimpleRAGAgent(search_pipeline, model_name = "./llama3-vision-merged-vllm")      # vLLM spawns here
 
 from datasets import load_dataset
 from itertools import islice
