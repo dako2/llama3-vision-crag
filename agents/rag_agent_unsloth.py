@@ -14,6 +14,8 @@ import json
 from pathlib import Path
 import time 
 
+max_tokens = 75
+
 def convert_messages_from_vllm_to_unsloth_format(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Converts a VLLM-style chat message history into a Unsloth-compatible format.
@@ -151,6 +153,9 @@ class SimpleRAGAgent(BaseAgent):
             model_name="unsloth/Llama-3.2-11B-Vision-Instruct",
             load_in_4bit=True,  # Optional: enables 4-bit quantization for efficiency
         )
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
         
         #self.model.load_adapter("llama3-vision-finetuned/", adapter_name="qa")
         #self.model.load_adapter("trainer_output/checkpoint-186", adapter_name="qa")
@@ -246,7 +251,7 @@ class SimpleRAGAgent(BaseAgent):
         
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
             prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
-            inputs = self.tokenizer(
+            input_tensor = self.tokenizer(
                 image,
                 prompt,
                 add_special_tokens=False,
@@ -257,7 +262,7 @@ class SimpleRAGAgent(BaseAgent):
             ).to(self.device)
 
             output = self.model.generate(
-                **inputs,
+                **input_tensor,
                 temperature=0.1,
                 max_new_tokens=max_tokens,
                 use_cache=False,
@@ -326,7 +331,7 @@ class SimpleRAGAgent(BaseAgent):
         
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
             prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
-            inputs = self.tokenizer(
+            input_tensor = self.tokenizer(
                 image,
                 prompt,
                 add_special_tokens=False,
@@ -337,7 +342,7 @@ class SimpleRAGAgent(BaseAgent):
             ).to(self.device)
 
             output = self.model.generate(
-                **inputs,
+                **input_tensor,
                 temperature=0.1,
                 max_new_tokens=max_tokens,
                 use_cache=False,
@@ -477,7 +482,7 @@ class SimpleRAGAgent(BaseAgent):
         
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
             prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
-            inputs = self.tokenizer(
+            input_tensor = self.tokenizer(
                 image,
                 prompt,
                 add_special_tokens=False,
@@ -488,7 +493,7 @@ class SimpleRAGAgent(BaseAgent):
             ).to(self.device)
 
             output = self.model.generate(
-                **inputs,
+                **input_tensor,
                 temperature=0.1,
                 max_new_tokens=max_tokens,
                 use_cache=False,
@@ -596,7 +601,7 @@ class SimpleRAGAgent(BaseAgent):
 
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
             prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
-            inputs = self.tokenizer(
+            input_tensor = self.tokenizer(
                 image,
                 prompt,
                 add_special_tokens=False,
@@ -607,7 +612,7 @@ class SimpleRAGAgent(BaseAgent):
             ).to(self.device)
 
             output = self.model.generate(
-                **inputs,
+                **input_tensor,
                 temperature=0.1,
                 max_new_tokens=max_tokens,
                 use_cache=False,
@@ -702,7 +707,7 @@ class SimpleRAGAgent(BaseAgent):
             
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
             prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
-            inputs = self.tokenizer(
+            input_tensor = self.tokenizer(
                 image,
                 prompt,
                 add_special_tokens=False,
@@ -713,7 +718,7 @@ class SimpleRAGAgent(BaseAgent):
             ).to(self.device)
 
             output = self.model.generate(
-                **inputs,
+                **input_tensor,
                 temperature=0.1,
                 max_new_tokens=max_tokens,
                 use_cache=False,
@@ -781,7 +786,7 @@ class SimpleRAGAgent(BaseAgent):
         print("Case0",responses)
 
         # # Step 1: Batch summarize all images for search terms
-        # image_summaries = self.batch_summarize_images(session_ids, queries, images)
+        image_summaries = self.batch_summarize_images(session_ids, queries, images)
         
         # # Step 2: Prepare RAG-enhanced inputs in batch
         # search_results = self.prepare_rag_enhanced_inputs(session_ids, 
