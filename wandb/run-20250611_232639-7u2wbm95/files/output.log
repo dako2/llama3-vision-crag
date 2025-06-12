@@ -1,0 +1,144 @@
+==((====))==  Unsloth 2025.5.7: Fast Mllama patching. Transformers: 4.51.3. vLLM: 0.8.5.post1.
+   \\   /|    NVIDIA GeForce RTX 3090. Num GPUs = 2. Max memory: 23.684 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.6.0+cu124. CUDA: 8.6. CUDA Toolkit: 12.4. Triton: 3.2.0
+\        /    Bfloat16 = TRUE. FA [Xformers = 0.0.29.post2. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:03<00:00,  1.65s/it]
+Unsloth: Making `model.base_model.model.language_model` require gradients
+Unsloth: We found double BOS tokens - we shall remove one automatically.
+Unsloth: Tokenizing ["text"] (num_proc=32):   0%|                                                                                                                           | 0/884 [00:06<?, ? examples/s]
+multiprocess.pool.RemoteTraceback:
+"""
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/multiprocess/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 688, in _write_generator_to_queue
+    for i, result in enumerate(func(**kwargs)):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3525, in _map_single
+    for i, batch in iter_outputs(shard_iterable):
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3475, in iter_outputs
+    yield i, apply_function(example, i, offset=offset)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3398, in apply_function
+    processed_inputs = function(*fn_args, *additional_args, **fn_kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 707, in _tokenize
+    return tokenizer(
+           ^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 2887, in __call__
+    encodings = self._call_one(text=text, text_pair=text_pair, **all_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 2975, in _call_one
+    return self.batch_encode_plus(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 3177, in batch_encode_plus
+    return self._batch_encode_plus(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_fast.py", line 539, in _batch_encode_plus
+    encodings = self._tokenizer.encode_batch(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 118, in <module>
+    trainer = SFTTrainer(
+              ^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/unsloth/trainer.py", line 203, in new_init
+    original_init(self, *args, **kwargs)
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 1004, in __init__
+    super().__init__(
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 454, in __init__
+    train_dataset = self._prepare_dataset(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 722, in _prepare_dataset
+    dataset = dataset.map(_tokenize, batched = True, **map_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 557, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3171, in map
+    for rank, done, content in iflatmap_unordered(
+                               ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 728, in iflatmap_unordered
+    [async_result.get(timeout=0.05) for async_result in async_results]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/multiprocess/pool.py", line 774, in get
+    raise self._value
+TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
+multiprocess.pool.RemoteTraceback:
+"""
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/multiprocess/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+                    ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 688, in _write_generator_to_queue
+    for i, result in enumerate(func(**kwargs)):
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3525, in _map_single
+    for i, batch in iter_outputs(shard_iterable):
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3475, in iter_outputs
+    yield i, apply_function(example, i, offset=offset)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3398, in apply_function
+    processed_inputs = function(*fn_args, *additional_args, **fn_kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 707, in _tokenize
+    return tokenizer(
+           ^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 2887, in __call__
+    encodings = self._call_one(text=text, text_pair=text_pair, **all_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 2975, in _call_one
+    return self.batch_encode_plus(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_base.py", line 3177, in batch_encode_plus
+    return self._batch_encode_plus(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/tokenization_utils_fast.py", line 539, in _batch_encode_plus
+    encodings = self._tokenizer.encode_batch(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 118, in <module>
+    trainer = SFTTrainer(
+              ^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/unsloth/trainer.py", line 203, in new_init
+    original_init(self, *args, **kwargs)
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 1004, in __init__
+    super().__init__(
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 454, in __init__
+    train_dataset = self._prepare_dataset(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 722, in _prepare_dataset
+    dataset = dataset.map(_tokenize, batched = True, **map_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 557, in wrapper
+    out: Union["Dataset", "DatasetDict"] = func(self, *args, **kwargs)
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 3171, in map
+    for rank, done, content in iflatmap_unordered(
+                               ^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/utils/py_utils.py", line 728, in iflatmap_unordered
+    [async_result.get(timeout=0.05) for async_result in async_results]
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/multiprocess/pool.py", line 774, in get
+    raise self._value
+TypeError: TextEncodeInput must be Union[TextInputSequence, Tuple[InputSequence, InputSequence]]

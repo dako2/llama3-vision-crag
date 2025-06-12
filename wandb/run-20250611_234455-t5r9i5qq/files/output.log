@@ -1,0 +1,42 @@
+Preparing training examples: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 884/884 [00:00<00:00, 12072.10it/s]
+Total examples: 0
+==((====))==  Unsloth 2025.5.7: Fast Mllama patching. Transformers: 4.51.3. vLLM: 0.8.5.post1.
+   \\   /|    NVIDIA GeForce RTX 3090. Num GPUs = 2. Max memory: 23.684 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.6.0+cu124. CUDA: 8.6. CUDA Toolkit: 12.4. Triton: 3.2.0
+\        /    Bfloat16 = TRUE. FA [Xformers = 0.0.29.post2. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:03<00:00,  1.51s/it]
+Unsloth: Making `model.base_model.model.language_model` require gradients
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 153, in <module>
+    trainer.train()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 2245, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 23, in _fast_inner_training_loop
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 1026, in get_train_dataloader
+    dataloader_params["sampler"] = self._get_train_sampler()
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 996, in _get_train_sampler
+    return RandomSampler(self.train_dataset)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/torch/utils/data/sampler.py", line 165, in __init__
+    raise ValueError(
+ValueError: num_samples should be a positive integer value, but got num_samples=0
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 153, in <module>
+    trainer.train()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 2245, in train
+    return inner_training_loop(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 23, in _fast_inner_training_loop
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 1026, in get_train_dataloader
+    dataloader_params["sampler"] = self._get_train_sampler()
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/trainer.py", line 996, in _get_train_sampler
+    return RandomSampler(self.train_dataset)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/torch/utils/data/sampler.py", line 165, in __init__
+    raise ValueError(
+ValueError: num_samples should be a positive integer value, but got num_samples=0

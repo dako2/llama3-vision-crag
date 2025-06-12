@@ -1,0 +1,11 @@
+Preparing training examples: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 884/884 [00:00<00:00, 11939.50it/s]
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 99, in <module>
+    print("First example:", train_conv[0])
+                            ~~~~~~~~~~^^^
+IndexError: list index out of range
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 99, in <module>
+    print("First example:", train_conv[0])
+                            ~~~~~~~~~~^^^
+IndexError: list index out of range

@@ -1,0 +1,43 @@
+Map: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 884/884 [00:00<00:00, 22941.82 examples/s]
+==((====))==  Unsloth 2025.5.7: Fast Mllama patching. Transformers: 4.51.3. vLLM: 0.8.5.post1.
+   \\   /|    NVIDIA GeForce RTX 3090. Num GPUs = 2. Max memory: 23.684 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.6.0+cu124. CUDA: 8.6. CUDA Toolkit: 12.4. Triton: 3.2.0
+\        /    Bfloat16 = TRUE. FA [Xformers = 0.0.29.post2. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:03<00:00,  1.68s/it]
+Unsloth: Making `model.base_model.model.language_model` require gradients
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 103, in <module>
+    trainer = SFTTrainer(
+              ^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/unsloth/trainer.py", line 203, in new_init
+    original_init(self, *args, **kwargs)
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 1004, in __init__
+    super().__init__(
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 454, in __init__
+    train_dataset = self._prepare_dataset(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 671, in _prepare_dataset
+    raise RuntimeError("Unsloth: You must specify a `formatting_func`")
+RuntimeError: Unsloth: You must specify a `formatting_func`
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 103, in <module>
+    trainer = SFTTrainer(
+              ^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/unsloth/trainer.py", line 203, in new_init
+    original_init(self, *args, **kwargs)
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 1004, in __init__
+    super().__init__(
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/transformers/utils/deprecation.py", line 172, in wrapped_func
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 454, in __init__
+    train_dataset = self._prepare_dataset(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/unsloth_compiled_cache/UnslothSFTTrainer.py", line 671, in _prepare_dataset
+    raise RuntimeError("Unsloth: You must specify a `formatting_func`")
+RuntimeError: Unsloth: You must specify a `formatting_func`

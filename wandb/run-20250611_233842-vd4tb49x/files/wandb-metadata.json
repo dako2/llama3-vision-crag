@@ -1,0 +1,48 @@
+{
+  "os": "Linux-6.11.0-26-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.12.9",
+  "startedAt": "2025-06-12T06:38:42.588364Z",
+  "program": "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py",
+  "codePath": "sft_unsloth.py",
+  "git": {
+    "remote": "git@github-dako2:dako2/llama3-vision-crag.git",
+    "commit": "6d624bb16d18a8bc216d95dfea4cf9041fdb5caf"
+  },
+  "email": "yihan7206@gmail.com",
+  "root": "/home/dako/Documents/meta_crag_submissions/llama3_new",
+  "host": "eya",
+  "executable": "/home/dako/miniconda3/envs/crag/bin/python",
+  "codePathLocal": "sft_unsloth.py",
+  "cpu_count": 16,
+  "cpu_count_logical": 32,
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "3167431745536",
+      "used": "1101989261312"
+    }
+  },
+  "memory": {
+    "total": "168861642752"
+  },
+  "cpu": {
+    "count": 16,
+    "countLogical": 32
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memoryTotal": "25769803776",
+      "cudaCores": 10496,
+      "architecture": "Ampere"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 3090",
+      "memoryTotal": "25769803776",
+      "cudaCores": 10496,
+      "architecture": "Ampere"
+    }
+  ],
+  "cudaVersion": "12.4"
+}

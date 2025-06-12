@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 112, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl", vision_ds=crag_validation)
+                                                              ^^^^^^^^^^^^^^^
+NameError: name 'crag_validation' is not defined
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 112, in <module>
+    train_conv = load_sft_dataset("sft_data.jsonl", vision_ds=crag_validation)
+                                                              ^^^^^^^^^^^^^^^
+NameError: name 'crag_validation' is not defined
