@@ -28,6 +28,8 @@ def load_sft_dataset(jsonl_path="results/selected_pipeline_finetune_data_final.j
                 print(f"⚠️  JSON decode error on line {i}: {e}")
     df = pd.DataFrame.from_records(records)
     df = df[df["finetune_output"].str.len() > 0]
+    df = df[df["accuracy"].isin([1, -1])]
+
 
     # Convert to final format
     samples = []
