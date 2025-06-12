@@ -3,3 +3,4 @@ __pycache__/
 wandb/
 unsloth_compiled_cache
 results/*.pkl
+*/.env
