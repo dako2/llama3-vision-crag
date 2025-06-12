@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 34, in <module>
+    .with_format("pil")
+     ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2696, in with_format
+    dataset.set_format(type=type, columns=columns, output_all_columns=output_all_columns, **format_kwargs)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2528, in set_format
+    get_formatter(type, features=self._info.features, **format_kwargs)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/__init__.py", line 136, in get_formatter
+    raise ValueError(f"Format type should be one of {list(_FORMAT_TYPES.keys())}, but got '{format_type}'")
+ValueError: Format type should be one of [None, 'arrow', 'numpy', 'pandas', 'custom', 'torch'], but got 'pil'
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 34, in <module>
+    .with_format("pil")
+     ^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2696, in with_format
+    dataset.set_format(type=type, columns=columns, output_all_columns=output_all_columns, **format_kwargs)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/fingerprint.py", line 442, in wrapper
+    out = func(dataset, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/arrow_dataset.py", line 2528, in set_format
+    get_formatter(type, features=self._info.features, **format_kwargs)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/datasets/formatting/__init__.py", line 136, in get_formatter
+    raise ValueError(f"Format type should be one of {list(_FORMAT_TYPES.keys())}, but got '{format_type}'")
+ValueError: Format type should be one of [None, 'arrow', 'numpy', 'pandas', 'custom', 'torch'], but got 'pil'

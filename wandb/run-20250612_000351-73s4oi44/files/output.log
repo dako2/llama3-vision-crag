@@ -1,0 +1,179 @@
+⚙️ Building dataset from JSONL with multiprocessing...
+Exception ignored in: <function _releaseLock at 0x75f71b7fbf60>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/logging/__init__.py", line 243, in _releaseLock
+    def _releaseLock():
+
+KeyboardInterrupt:
+Exception ignored in: <function _releaseLock at 0x75f71b7fbf60>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/logging/__init__.py", line 243, in _releaseLock
+    def _releaseLock():
+
+KeyboardInterrupt:
+Exception ignored in: <function _releaseLock at 0x75f71b7fbf60>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/logging/__init__.py", line 243, in _releaseLock
+    def _releaseLock():
+
+KeyboardInterrupt:
+Exception ignored in: <function _releaseLock at 0x75f71b7fbf60>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/logging/__init__.py", line 243, in _releaseLock
+    def _releaseLock():
+
+KeyboardInterrupt:
+Exception ignored in: <function _releaseLock at 0x75f71b7fbf60>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/logging/__init__.py", line 243, in _releaseLock
+    def _releaseLock():
+
+KeyboardInterrupt:
+Building dataset:  16%|██████████████████████▊                                                                                                                           | 138/884 [00:03<00:20, 35.90it/s]
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 856, in next
+    item = self._items.popleft()
+           ^^^^^^^^^^^^^^^^^^^^^
+IndexError: pop from an empty deque
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 69, in load_sft_dataset_mp
+  File "/home/dako/.local/lib/python3.12/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 861, in next
+    self._cond.wait(timeout)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 88, in <module>
+    return train_conv
+             ^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 81, in load_or_build_dataset
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 68, in load_sft_dataset_mp
+    rows = load_dataset("json", data_files=jsonl_path, split="train")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 739, in __exit__
+    self.terminate()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 657, in terminate
+    self._terminate()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/util.py", line 227, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 709, in _terminate_pool
+    worker_handler.join()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1149, in join
+    self._wait_for_tstate_lock()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1169, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 856, in next
+    item = self._items.popleft()
+           ^^^^^^^^^^^^^^^^^^^^^
+IndexError: pop from an empty deque
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 69, in load_sft_dataset_mp
+
+  File "/home/dako/.local/lib/python3.12/site-packages/tqdm/std.py", line 1181, in __iter__
+    for obj in iterable:
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 861, in next
+    self._cond.wait(timeout)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 88, in <module>
+    return train_conv
+             ^^^^^^^^^
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 81, in load_or_build_dataset
+
+  File "/home/dako/Documents/meta_crag_submissions/llama3_new/sft_unsloth.py", line 68, in load_sft_dataset_mp
+    rows = load_dataset("json", data_files=jsonl_path, split="train")
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 739, in __exit__
+    self.terminate()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 657, in terminate
+    self._terminate()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/util.py", line 227, in __call__
+    res = self._callback(*self._args, **self._kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/multiprocessing/pool.py", line 709, in _terminate_pool
+    worker_handler.join()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1149, in join
+    self._wait_for_tstate_lock()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1169, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Exception ignored in: <module 'threading' from '/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py'>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1594, in _shutdown
+    atexit_call()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/concurrent/futures/thread.py", line 25, in _python_exit
+    with _global_shutdown_lock:
+         ^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt:
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x75ed0ce1a980>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1149, in join
+    self._wait_for_tstate_lock()
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/threading.py", line 1169, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt:
+Exception ignored in atexit callback: <function shutdown at 0x75ed0e588900>
+Traceback (most recent call last):
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/_private/client_mode_hook.py", line 103, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/_private/worker.py", line 1950, in shutdown
+    from ray.dag.compiled_dag_node import _shutdown_all_compiled_dags
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/dag/__init__.py", line 1, in <module>
+    from ray.dag.dag_node import DAGNode
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/dag/dag_node.py", line 25, in <module>
+    from ray.dag.compiled_dag_node import build_compiled_dag_from_ray_dag
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/dag/compiled_dag_node.py", line 805, in <module>
+    class CompiledDAG:
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/site-packages/ray/dag/compiled_dag_node.py", line 2556, in CompiledDAG
+    ) -> Union[CompiledDAGRef, List[CompiledDAGRef]]:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 395, in inner
+    return _caches[func](*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 517, in __getitem__
+    return self._getitem(self, parameters)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 736, in Union
+    return _UnionGenericAlias(self, parameters)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 1270, in __init__
+    super().__init__(origin, inst=inst, name=name)
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 1176, in __init__
+    self._name = name
+    ^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 1216, in __setattr__
+    if _is_dunder(attr) or attr in {'_name', '_inst', '_nparams'}:
+       ^^^^^^^^^^^^^^^^
+  File "/home/dako/miniconda3/envs/crag/lib/python3.12/typing.py", line 1162, in _is_dunder
+    return attr.startswith('__') and attr.endswith('__')
+           ^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt:

@@ -1,0 +1,7 @@
+{"time":"2025-06-12T00:03:51.1844567-07:00","level":"INFO","msg":"stream: starting","core version":"0.19.11","symlink path":"/home/dako/Documents/meta_crag_submissions/llama3_new/wandb/run-20250612_000351-73s4oi44/logs/debug-core.log"}
+{"time":"2025-06-12T00:03:51.444517383-07:00","level":"INFO","msg":"created new stream","id":"73s4oi44"}
+{"time":"2025-06-12T00:03:51.444566202-07:00","level":"INFO","msg":"stream: started","id":"73s4oi44"}
+{"time":"2025-06-12T00:03:51.444585307-07:00","level":"INFO","msg":"writer: Do: started","stream_id":"73s4oi44"}
+{"time":"2025-06-12T00:03:51.444608961-07:00","level":"INFO","msg":"sender: started","stream_id":"73s4oi44"}
+{"time":"2025-06-12T00:03:51.444666506-07:00","level":"INFO","msg":"handler: started","stream_id":"73s4oi44"}
+{"time":"2025-06-12T00:03:51.600851842-07:00","level":"INFO","msg":"Starting system monitor"}

@@ -26,73 +26,69 @@ from typing import List, Dict, Any
 from tqdm.auto import tqdm
 from datasets import load_dataset
 from PIL import Image
+from multiprocessing import Pool, cpu_count
 
-TARGET_WIDTH  = 960
-TARGET_HEIGHT = 1280
-expected_size = (TARGET_WIDTH, TARGET_HEIGHT)
+# Preload CRAG-MM image dataset and build a lookup map
+from datasets import Image as HFImage
+crag_ds = load_dataset("crag-mm-2025/crag-mm-single-turn-public", split="validation")
+crag_ds = crag_ds.cast_column("image", HFImage(decode=True))  # ✅ decode PIL images
 
-# ------------------------------------------------------------------------------
-dataset = load_dataset("crag-mm-2025/crag-mm-single-turn-public", split="validation")
+IMAGE_MAP = {ex["session_id"]: ex["image"] for ex in crag_ds}
 
-def find_image_from_session_id(session_id):
-    target_session_id = session_id
-    # Find the matching example
-    match = next((item for item in dataset if item["session_id"] == target_session_id), None)
+# Constants
+TARGET_W, TARGET_H = 960, 1280
 
-    # Step 3: Load and display the image
-    if match:
-        image = match["image"]
-        return image
-    else:
-        return None
-
-def resize_image(img: Image.Image,
-                 w: int = TARGET_WIDTH,
-                 h: int = TARGET_HEIGHT) -> Image.Image:
-    """Resize PIL image if needed, keeping aspect ratio."""
-    if img.size != (w, h):
-        img = img.resize((w, h), Image.LANCZOS)
+def resize_image(img: Image.Image) -> Image.Image:
+    print("aa")
+    if img.size != (TARGET_W, TARGET_H):
+        return img.resize((TARGET_W, TARGET_H), Image.LANCZOS)
     return img
 
-def load_sft_dataset(
-    jsonl_path: str = "sft_data.jsonl",
-) -> List[Dict[str, Any]]:
-    """
-    Build a training list compatible with Unslo​th Vision.
-    Each element is   {"messages": [...]}
-    """
-
-    rows = load_dataset("json", data_files=jsonl_path, split="train")
-
-    train_conv: List[Dict[str, Any]] = []
-    for row in tqdm(rows, desc="Preparing training examples"):
-        img = find_image_from_session_id(row["session_id"])
+# This function must be top-level for pickling in multiprocessing
+def process_row(row: Dict[str, Any]) -> Dict[str, Any] | None:
+    
+    try:
+        session_id = row["session_id"]
+        img = IMAGE_MAP.get(session_id)
+        if img is None:
+            return None
         img = resize_image(img)
 
         messages = row["messages"]
-
-        # Insert the image into the user's content
         for turn in messages:
             if turn["role"] == "user":
                 turn["content"].append({"type": "image", "image": img})
-                break  # only insert once into first user turn
+                break
+        return {"messages": messages}
+    except Exception as e:
+        print(f"[ERROR] Failed processing session_id={row.get('session_id')}: {e}")
+        return None
 
-        train_conv.append({ "messages": messages })
+def load_sft_dataset_mp(jsonl_path: str = "sft_data.jsonl", num_workers: int = cpu_count()) -> List[Dict[str, Any]]:
+    rows = load_dataset("json", data_files=jsonl_path, split="train")
 
+    with Pool(processes=num_workers) as pool:
+        results = list(tqdm(pool.imap_unordered(process_row, rows), total=len(rows), desc="Building dataset"))
 
-    import pickle
+    results = [r for r in results if r is not None]
+    return results
 
-    with open("train_conv.pkl", "wb") as f:
+def load_or_build_dataset(pickle_path="train_conv.pkl", jsonl_path="sft_data.jsonl"):
+    if os.path.exists(pickle_path):
+        print(f"📦 Loading dataset from {pickle_path}")
+        with open(pickle_path, "rb") as f:
+            return pickle.load(f)
+
+    print("⚙️ Building dataset from JSONL with multiprocessing...")
+    train_conv = load_sft_dataset_mp(jsonl_path)
+
+    with open(pickle_path, "wb") as f:
         pickle.dump(train_conv, f)
-
-
+    print(f"✅ Saved dataset to {pickle_path}")
     return train_conv
 
-try:
-    with open("train_conv.pkl", "rb") as f:
-        train_conv = pickle.load(f)
-except:
-    train_conv = load_sft_dataset("sft_data.jsonl")
+train_conv = load_or_build_dataset()
+
 
 print("Total examples:", len(train_conv))
 
