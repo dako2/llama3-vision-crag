@@ -13,6 +13,44 @@ import json
 from pathlib import Path
 import time 
 
+def convert_messages_from_vllm_to_unsloth_format(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Converts a VLLM-style chat message history into a Unsloth-compatible format.
+    - Merges system/user/assistant messages into a single `user` prompt.
+    - Appends image and formatted text.
+    """
+    image = None
+    parts = []
+
+    for m in messages:
+        role = m["role"]
+        content = m["content"]
+
+        if role == "user" and isinstance(content, list):
+            # Look for image in multimodal messages
+            for part in content:
+                if part.get("type") == "image":
+                    image = {"type": "image"}
+                elif part.get("type") == "text":
+                    parts.append(part["text"])
+        elif role in {"system", "user", "assistant"} and isinstance(content, str):
+            # Just append the text parts from all roles except image parts
+            parts.append(f"[{role.upper()}] {content}")
+
+    merged_text = "\n".join(parts).strip()
+
+    unsloth_message = {
+        "role": "user",
+        "content": []
+    }
+
+    if image:
+        unsloth_message["content"].append(image)
+
+    unsloth_message["content"].append({"type": "text", "text": merged_text})
+
+    return [unsloth_message]
+
 
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 2
@@ -97,39 +135,31 @@ class SimpleRAGAgent(BaseAgent):
  
         self.initialize_models()
         
-    def initialize_models(self):
-        """
-        Initialize the vLLM model and tokenizer with appropriate settings.
-        
-        This configures the model for vision-language tasks with optimized
-        GPU memory usage and restricts to one image per prompt, as 
-        Llama-3.2-Vision models do not handle multiple images well in a single prompt.
-        
-        Note:
-            The limit_mm_per_prompt setting is critical as the current Llama vision models
-            struggle with multiple images in a single conversation.
-            Ref: https://huggingface.co/meta-llama/Llama-3.2-11B-Vision-Instruct/discussions/43#66f98f742094ed9e5f5107d4
-        """
-        print(f"Initializing {self.model_name} with vLLM...")
-        
-        # Initialize the model with vLLM
-        self.llm = vllm.LLM(
-            self.model_name,
-            tensor_parallel_size=VLLM_TENSOR_PARALLEL_SIZE, 
-            gpu_memory_utilization=VLLM_GPU_MEMORY_UTILIZATION, 
-            max_model_len=MAX_MODEL_LEN,
-            max_num_seqs=MAX_NUM_SEQS,
-            trust_remote_code=True,
-            dtype="bfloat16",
-            enforce_eager=True,
-            limit_mm_per_prompt={
-                "image": 1 
-            } # In the CRAG-MM dataset, every conversation has at most 1 image
-        )
-        self.tokenizer = self.llm.get_tokenizer() 
-
-        print("Models loaded successfully")
     
+    def initialize_models(self):
+        print("Loading base model and LoRA adapter from checkpoint...")
+
+        # self.model, self.tokenizer = FastVisionModel.from_pretrained(
+        #     "llama3-vision-finetuned",
+        #     load_in_4bit=True,
+        #     use_gradient_checkpointing="unsloth"
+        # )
+
+        # Load the base vision model
+        self.model, self.tokenizer = FastVisionModel.from_pretrained(
+            model_name="unsloth/Llama-3.2-11B-Vision-Instruct",
+            load_in_4bit=True,  # Optional: enables 4-bit quantization for efficiency
+        )
+        
+        #self.model.load_adapter("llama3-vision-finetuned/", adapter_name="qa")
+        #self.model.load_adapter("trainer_output/checkpoint-186", adapter_name="qa")
+        self.model.eval()
+        
+        #FastVisionModel.for_inference(self.model)
+        #self.model.load_adapter("trainer_output/checkpoint-186")
+
+        print("✅ Loaded fine-tuned model with LoRA for inference.")
+
     def _log_for_sft(
         self,
         session_id: str,
@@ -169,7 +199,7 @@ class SimpleRAGAgent(BaseAgent):
         
         Returns:
             int: The batch size, indicating how many queries should be processed together 
-                 in a single batch.
+                 in a ssingle batch.
         """
         return AICROWD_SUBMISSION_BATCH_SIZE
     
@@ -190,6 +220,7 @@ class SimpleRAGAgent(BaseAgent):
         summarize_prompt = "You provide specific object identification in an image given a user's query. Don't answer the question itself but only provide the object name. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
         
         inputs = []
+        outputs = []
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
@@ -212,19 +243,35 @@ class SimpleRAGAgent(BaseAgent):
             })
             messages_batch.append(messages)
         
-        # Generate summaries in a single batch call
-        outputs = self.llm.generate(
-            inputs,
-            sampling_params=vllm.SamplingParams(
+            new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
+            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            inputs = self.tokenizer(
+                image,
+                prompt,
+                add_special_tokens=False,
+                return_tensors="pt",
+                truncation=True,
+                max_new_tokens=max_tokens,
+                max_length=8192,
+            ).to(self.device)
+
+            output = self.model.generate(
+                **inputs,
                 temperature=0.1,
-                top_p=0.9,
-                max_tokens=30,  # Short summary only
-                skip_special_tokens=True
+                max_new_tokens=max_tokens,
+                use_cache=False,
             )
-        )
+
+            answer = (
+                self.tokenizer.decode(output[0])
+                .split("<|start_header_id|>assistant<|end_header_id|>")[-1]
+                .split("<|eot_id|>")[0]
+                .strip()
+            )
+            outputs.append(answer)
         
         # Extract and clean summaries
-        summaries = [output.outputs[0].text.strip() for output in outputs]
+        summaries = outputs#[output.outputs[0].text.strip() for output in outputs]
         print(f"Generated {len(summaries)} image summaries: {summaries}")
 
         for session_id, answer, history in zip(session_ids, summaries, messages_batch): 
@@ -252,6 +299,7 @@ class SimpleRAGAgent(BaseAgent):
         # 2024: You are a helpful and honest assistant. Please, respond concisely and truthfully in {token_limit} words or less. If you are not sure about the query, answer I don’t know. There is no need to explain the reasoning behind your answers. "
         
         inputs = []
+        outputs = []
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
@@ -274,19 +322,36 @@ class SimpleRAGAgent(BaseAgent):
             })
             messages_batch.append(messages)
         
-        # Generate summaries in a single batch call
-        outputs = self.llm.generate(
-            inputs,
-            sampling_params=vllm.SamplingParams(
+        
+            new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
+            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            inputs = self.tokenizer(
+                image,
+                prompt,
+                add_special_tokens=False,
+                return_tensors="pt",
+                truncation=True,
+                max_new_tokens=max_tokens,
+                max_length=8192,
+            ).to(self.device)
+
+            output = self.model.generate(
+                **inputs,
                 temperature=0.1,
-                top_p=0.9,
-                max_tokens=150,  # Short summary only
-                skip_special_tokens=True
+                max_new_tokens=max_tokens,
+                use_cache=False,
             )
-        )
+
+            answer = (
+                self.tokenizer.decode(output[0])
+                .split("<|start_header_id|>assistant<|end_header_id|>")[-1]
+                .split("<|eot_id|>")[0]
+                .strip()
+            )
+            outputs.append(answer)
         
         # Extract and clean summaries
-        summaries = [output.outputs[0].text.strip() for output in outputs]
+        summaries = outputs#[output.outputs[0].text.strip() for output in outputs]
         print(f"Generated {len(summaries)} image summaries: {summaries}")
 
         for session_id, answer, history in zip(session_ids, summaries, messages_batch): 
@@ -386,6 +451,7 @@ class SimpleRAGAgent(BaseAgent):
         summarize_prompt = "Be helpful assistant on web search"
         
         inputs = []
+        outputs = []
         messages_batch = []
         for query, caption, image in zip(queries, image_summaries, images):
             messages = [
@@ -408,19 +474,35 @@ class SimpleRAGAgent(BaseAgent):
             })
             messages_batch.append(messages)
         
-        # Generate summaries in a single batch call
-        outputs = self.llm.generate(
-            inputs,
-            sampling_params=vllm.SamplingParams(
+            new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
+            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            inputs = self.tokenizer(
+                image,
+                prompt,
+                add_special_tokens=False,
+                return_tensors="pt",
+                truncation=True,
+                max_new_tokens=max_tokens,
+                max_length=8192,
+            ).to(self.device)
+
+            output = self.model.generate(
+                **inputs,
                 temperature=0.1,
-                top_p=0.9,
-                max_tokens=30,  # Short summary only
-                skip_special_tokens=True
+                max_new_tokens=max_tokens,
+                use_cache=False,
             )
-        )
+
+            answer = (
+                self.tokenizer.decode(output[0])
+                .split("<|start_header_id|>assistant<|end_header_id|>")[-1]
+                .split("<|eot_id|>")[0]
+                .strip()
+            )
+            outputs.append(answer)
         
         # Extract and clean summaries
-        summaries = [output.outputs[0].text.strip() for output in outputs]
+        summaries =outputs #[output.outputs[0].text.strip() for output in outputs]
         print(f"Generated {len(summaries)} image summaries: {summaries}")
 
         # Batch process search queries
@@ -436,6 +518,8 @@ class SimpleRAGAgent(BaseAgent):
 
         return search_results_batch
 
+
+        
     def inference(
         self, 
         session_ids,
@@ -450,6 +534,11 @@ class SimpleRAGAgent(BaseAgent):
         # Prepare formatted inputs with RAG context for each query
         inputs = []
         messages_batch = []
+
+
+        outputs = [] 
+
+        
         for idx, (query, image, message_history, search_results, caption) in enumerate(
             zip(queries, images, message_histories, search_results_batch, image_summaries)
         ):
@@ -503,36 +592,36 @@ class SimpleRAGAgent(BaseAgent):
             # Add the current query
             messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
-            # Apply chat template
-            formatted_prompt = self.tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=False
-            )
-            
-            inputs.append({
-                "prompt": formatted_prompt,
-                # "multi_modal_data": {
-                #     "image": image
-                # }
-            })
-            messages_batch.append(messages)
 
+            new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
+            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            inputs = self.tokenizer(
+                image,
+                prompt,
+                add_special_tokens=False,
+                return_tensors="pt",
+                truncation=True,
+                max_new_tokens=max_tokens,
+                #max_length=8192,
+            ).to(self.device)
 
-        # Step 3: Generate responses using the batch of RAG-enhanced prompts
-        print(f"Generating responses for {len(inputs)} queries")
-        outputs = self.llm.generate(
-            inputs,
-            sampling_params=vllm.SamplingParams(
+            output = self.model.generate(
+                **inputs,
                 temperature=0.1,
-                top_p=0.9,
-                max_tokens=MAX_GENERATION_TOKENS,
-                skip_special_tokens=True
+                max_new_tokens=max_tokens,
+                use_cache=False,
             )
-        ) 
+
+            answer = (
+                self.tokenizer.decode(output[0])
+                .split("<|start_header_id|>assistant<|end_header_id|>")[-1]
+                .split("<|eot_id|>")[0]
+                .strip()
+            )
+            outputs.append(answer)
 
         # Extract and return the generated responses
-        responses = [output.outputs[0].text for output in outputs]
+        responses = outputs#[output.outputs[0].text for output in outputs]
         print(f"Successfully generated {len(responses)} responses")
         
         for session_id, answer, history in zip(session_ids, responses, messages_batch): 
@@ -553,6 +642,7 @@ class SimpleRAGAgent(BaseAgent):
 
         # Prepare formatted inputs with RAG context for each query
         inputs = []
+        outputs = []
         messages_batch = []
         for idx, (query, image, message_history, search_results, caption) in enumerate(
             zip(queries, images, message_histories, search_results_batch, image_summaries)
@@ -608,42 +698,43 @@ class SimpleRAGAgent(BaseAgent):
             messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
             # Apply chat template
-            formatted_prompt = self.tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=False
-            )
             
-            inputs.append({
-                "prompt": formatted_prompt,
-                "multi_modal_data": {
-                    "image": image
-                }
-            })
-            messages_batch.append(messages)
+            new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
+            prompt = self.tokenizer.apply_chat_template(new_messages, add_generation_prompt=True)
+            inputs = self.tokenizer(
+                image,
+                prompt,
+                add_special_tokens=False,
+                return_tensors="pt",
+                truncation=True,
+                max_new_tokens=max_tokens,
+                max_length=8192,
+            ).to(self.device)
 
-
-        # Step 3: Generate responses using the batch of RAG-enhanced prompts
-        print(f"Generating responses for {len(inputs)} queries")
-        outputs = self.llm.generate(
-            inputs,
-            sampling_params=vllm.SamplingParams(
+            output = self.model.generate(
+                **inputs,
                 temperature=0.1,
-                top_p=0.9,
-                max_tokens=MAX_GENERATION_TOKENS,
-                skip_special_tokens=True
+                max_new_tokens=max_tokens,
+                use_cache=False,
             )
-        ) 
+
+            answer = (
+                self.tokenizer.decode(output[0])
+                .split("<|start_header_id|>assistant<|end_header_id|>")[-1]
+                .split("<|eot_id|>")[0]
+                .strip()
+            )
+            outputs.append(answer)
 
         # Extract and return the generated responses
-        responses = [output.outputs[0].text for output in outputs]
+        responses = outputs #[output.outputs[0].text for output in outputs]
         print(f"Successfully generated {len(responses)} responses")
         
         for session_id, answer, history in zip(session_ids, responses, messages_batch): 
             self._log_for_sft(session_id, answer, history, file_path=save_sft_data_path) #"sft_response_data_case_2.jsonl"
 
         return responses
-        
+
     def batch_generate_response(
         self,
         session_ids, 

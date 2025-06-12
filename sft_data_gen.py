@@ -9,7 +9,7 @@ from collections import defaultdict
 from itertools import islice
 
 from remote_search_pipeline import RemoteSearchPipeline
-from agents.rag_agent import SimpleRAGAgent
+from agents.rag_agent_unsloth import SimpleRAGAgent
 
 from cragmm_search.search import UnifiedSearchPipeline
 search_pipeline = UnifiedSearchPipeline(
