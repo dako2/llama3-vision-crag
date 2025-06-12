@@ -193,8 +193,8 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
-                {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Analyze the image and this question -- {query}. Identify the object name in the image for web search."}]},
+                #{"role": "system", "content": summarize_prompt},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt}Analyze the image and this question -- {query}. Identify the object name in the image for web search."}]},
             ]
             
             # Format prompt using the tokenizer
@@ -255,8 +255,8 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
-                {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{query}."}]},
+                #{"role": "system", "content": summarize_prompt},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt}{query}."}]},
             ]
             
             # Format prompt using the tokenizer
@@ -389,8 +389,8 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, caption, image in zip(queries, image_summaries, images):
             messages = [
-                {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
+                #{"role": "system", "content": },
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt} Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
             ]
             
             # Format prompt using the tokenizer
@@ -492,7 +492,7 @@ class SimpleRAGAgent(BaseAgent):
                 
             # Structure messages with image and RAG context
             messages = [
-                {"role": "system", "content": system_prompt},
+                #{"role": "system", "content": system_prompt},
                 #{"role": "user", "content": [{"type": "image"}]}
             ]
             
@@ -501,7 +501,7 @@ class SimpleRAGAgent(BaseAgent):
                 messages = messages + message_history
             
             # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
+            messages.append({"role": "user", "content": system_prompt+user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
             # Apply chat template
             formatted_prompt = self.tokenizer.apply_chat_template(
@@ -596,7 +596,7 @@ class SimpleRAGAgent(BaseAgent):
                 
             # Structure messages with image and RAG context
             messages = [
-                {"role": "system", "content": system_prompt},
+                #{"role": "system", "content": system_prompt},
                 {"role": "user", "content": [{"type": "image"}]}
             ]
             
@@ -605,7 +605,7 @@ class SimpleRAGAgent(BaseAgent):
                 messages = messages + message_history
             
             # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
+            messages.append({"role": "user", "content": system_prompt+user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
             # Apply chat template
             formatted_prompt = self.tokenizer.apply_chat_template(
@@ -689,7 +689,7 @@ class SimpleRAGAgent(BaseAgent):
         print("Case0",responses)
 
         # # Step 1: Batch summarize all images for search terms
-        # image_summaries = self.batch_summarize_images(session_ids, queries, images)
+        image_summaries = self.batch_summarize_images(session_ids, queries, images)
         
         # # Step 2: Prepare RAG-enhanced inputs in batch
         # search_results = self.prepare_rag_enhanced_inputs(session_ids, 

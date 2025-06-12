@@ -21,3 +21,11 @@ model, tokenizer = FastVisionModel.from_pretrained(
 # Saving & Pushing
 model.save_pretrained_merged("model", tokenizer, save_method = "merged_16bit",)
 #model.push_to_hub_merged("hf/model", tokenizer, save_method = "merged_16bit", token = "")
+
+# model.save_pretrained(
+#     "llama3-vision-merged-vllm",
+#     safe_serialization=True,          # <-- writes .safetensors
+#     max_shard_size="4GB",
+# )
+# tokenizer.save_pretrained("llama3-vision-merged-vllm")  # <-- brings along the
+#                                                         #     up-to-date template
