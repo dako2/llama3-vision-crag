@@ -7,9 +7,9 @@ import torch
 import wandb
 from tqdm.auto import tqdm
 from transformers import TrainerCallback
-# from unsloth import FastVisionModel, is_bf16_supported
-# from unsloth.trainer import UnslothVisionDataCollator
-# from trl import SFTTrainer, SFTConfig
+from unsloth import FastVisionModel, is_bf16_supported
+from unsloth.trainer import UnslothVisionDataCollator
+from trl import SFTTrainer, SFTConfig
 
 # wandb.login()
 # wandb.init()
@@ -35,7 +35,7 @@ def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", s
 
             messages = [
                 {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": [{"type": "text", "text": example["finetune_output"]}]}
+                {"role": "assistant", "content": [{"type": "text", "text": example["finetune_output"]}, {"type": "image", "image": None}]}
             ]
             dataset.append({"messages": messages})
 
@@ -49,7 +49,7 @@ def load_sft_dataset(jsonl_path="selected_pipeline_finetune_data_final.jsonl", s
 
 def load_model():
     model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
-    model, tokenizer = FastVisionModel.from_pretrained(
+    model, tokenizer, processor = FastVisionModel.from_pretrained(
         model_id,
         load_in_4bit=True,
         use_gradient_checkpointing="unsloth"
@@ -69,7 +69,7 @@ def load_model():
         use_rslora=False,
         loftq_config=None,
     )
-    return model, tokenizer
+    return model, tokenizer, processor
 
 class GPUStats(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
