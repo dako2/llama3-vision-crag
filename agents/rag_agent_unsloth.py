@@ -457,15 +457,15 @@ class SimpleRAGAgent(BaseAgent):
         """
 
         # Prepare image summarization prompts in batch
-        summarize_prompt = "Be helpful assistant on web search"
+        summarize_prompt = "Be helpful assistant on web search."
         
         inputs = []
         outputs = []
         messages_batch = []
         for query, caption, image in zip(queries, image_summaries, images):
             messages = [
-                {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
+                # {"role": "system", "content": summarize_prompt}, # Oyiyi
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt} Given the image caption and user's query, clarify the question into one sentence for better keywords for web search. Question:{query}, Image Caption:{caption}"}]},
             ]
             
             # Format prompt using the tokenizer
@@ -590,7 +590,7 @@ class SimpleRAGAgent(BaseAgent):
                 
             # Structure messages with image and RAG context
             messages = [
-                {"role": "system", "content": system_prompt},
+                # {"role": "system", "content": system_prompt}, # Oyiyi
                 #{"role": "user", "content": [{"type": "image"}]}
             ]
             
@@ -598,8 +598,8 @@ class SimpleRAGAgent(BaseAgent):
             if message_history:
                 messages = messages + message_history
             
-            # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
+            # Add the current query # Oyiyi
+            messages.append({"role": "user", "content": f"{system_prompt}\n" + user_prompt.format(caption=caption, context_str=rag_context, query_str=query)})
             
 
             new_messages = convert_messages_from_vllm_to_unsloth_format(messages)
