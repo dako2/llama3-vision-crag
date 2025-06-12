@@ -29,7 +29,7 @@ from itertools import islice
 ############################
 # Config
 ############################
-BATCH_SIZE = 16                    # ← change to fit GPU/VRAM
+BATCH_SIZE = 8                    # ← change to fit GPU/VRAM
 SPLIT      = "validation"         # or "public_test", etc.
 
 
