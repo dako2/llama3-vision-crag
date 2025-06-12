@@ -2,7 +2,7 @@ import torch
 import wandb
 from datasets import load_dataset
 from transformers import TrainerCallback
-from trl import SFTConfig, SFTTrainer
+from unsloth.trainer import SFTTrainer, SFTConfig
 
 from unsloth import FastVisionModel
 from unsloth.trainer import UnslothVisionDataCollator
