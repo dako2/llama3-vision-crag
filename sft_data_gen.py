@@ -4,6 +4,7 @@ from datasets import load_dataset
 import json
 from typing import Dict, List, Any, Optional
 from PIL import Image
+from tqdm import tqdm
 import time
  
 from collections import defaultdict
