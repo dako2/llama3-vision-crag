@@ -304,7 +304,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         # summarize_prompt = "Honestly answer the user's tricky question based on the image. Be concise in one sentence. If you are not sure, just reply 'i don't know'"
-        summarize_prompt = "You are a helpful and honest assistant. Please, respond concisely and truthfully. There is no need to explain the reasoning behind your answers."
+        summarize_prompt = "Honestly answer the user's tricky question based on the image. Be concise in one sentence. If you are not sure, just reply 'i don't know'."
         # 2024: You are a helpful and honest assistant. Please, respond concisely and truthfully in {token_limit} words or less. If you are not sure about the query, answer I don’t know. There is no need to explain the reasoning behind your answers. "
         
         inputs = []
@@ -312,8 +312,8 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
-                {"role": "system", "content": summarize_prompt},
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{query}."}]},
+                # {"role": "system", "content": summarize_prompt},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": f"{summarize_prompt}{query}."}]},
             ]
             
             # Format prompt using the tokenizer
