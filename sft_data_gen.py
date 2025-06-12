@@ -30,6 +30,7 @@ from itertools import islice
 BATCH_SIZE = 2                    # ← change to fit GPU/VRAM
 SPLIT      = "validation"         # or "public_test", etc.
 
+
 ############################
 # 1.  Load the HF split
 ############################
@@ -63,7 +64,12 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
 ############################
 # 3.  Main loop
 ############################
-for minibatch in batched(ds, BATCH_SIZE):
+# Estimate total batches
+total_batches = len(ds) // BATCH_SIZE + int(len(ds) % BATCH_SIZE != 0)
+
+start_time = time.time()
+
+for minibatch in tqdm(batched(ds, BATCH_SIZE), total=total_batches, desc="Generating responses"):
     # Each row has: session_id, image (PIL), turns[...] … :contentReference[oaicite:0]{index=0}
     session_ids = [row["session_id"] for row in minibatch]
     queries   = [row["turns"]["query"][0] for row in minibatch]
@@ -78,4 +84,6 @@ for minibatch in batched(ds, BATCH_SIZE):
     #answers = agent.batch_images_search(session_ids, images)
     print(answers)
      
-     
+
+elapsed_time = time.time() - start_time
+print(f"\n✅ All batches completed in {elapsed_time:.2f} seconds.")
