@@ -1,34 +1,37 @@
-from multiprocessing import Pool
-from tqdm.auto import tqdm
-from datasets import load_dataset
-from PIL import Image
-from io import BytesIO
-import requests
-import pandas as pd
 import torch
 import wandb
-from unsloth import FastVisionModel, is_bf16_supported
-from unsloth.trainer import UnslothVisionDataCollator
-from trl import SFTTrainer, SFTConfig
-from transformers import TrainerCallback
-import pickle
-import os
 from datasets import load_dataset
+from transformers import TrainerCallback
+from trl import SFTConfig, SFTTrainer
+
+from unsloth import FastVisionModel
+from unsloth.trainer import UnslothVisionDataCollator
 
 # 0) W&B login
 wandb.login()
 wandb.init()
 
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
-# If it's JSONL (1 JSON object per line)
+# 1) Load dataset created by your script
+# This file already has the correct chat format in the "messages" column.
 train_conv = load_dataset("json", data_files="sft_data.jsonl", split="train")
-print(train_conv[0])
-print("train_conv len:",len(train_conv))
-# # 5) Load & prepare model
 
+# 2) Add a placeholder for the image to satisfy the Vision model's data requirements.
+# This prevents the "Invalid input type" ValueError.
+def add_empty_image(example):
+    example["image"] = None
+    return example
+
+train_conv = train_conv.map(add_empty_image)
+
+print(f"Dataset loaded and prepared. First example:\n{train_conv[0]}")
+
+# 3) Load & prepare model
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
-model, tokenizer = FastVisionModel.from_pretrained(model_id, load_in_4bit=True, use_gradient_checkpointing="unsloth")
+model, tokenizer = FastVisionModel.from_pretrained(
+    model_id,
+    load_in_4bit=True,
+    use_gradient_checkpointing="unsloth"
+)
 FastVisionModel.for_training(model)
 model = FastVisionModel.get_peft_model(
     model,
@@ -36,12 +39,16 @@ model = FastVisionModel.get_peft_model(
     finetune_language_layers=True,
     finetune_attention_modules=True,
     finetune_mlp_modules=True,
-    r=16, lora_alpha=16, lora_dropout=0.0,
-    bias="none", random_state=3443,
-    use_rslora=False, loftq_config=None,
+    r=16,
+    lora_alpha=16,
+    lora_dropout=0.0,
+    bias="none",
+    random_state=3443,
+    use_rslora=False,
+    loftq_config=None,
 )
 
-# 6) GPU logging callback
+# 4) GPU logging callback
 class GPUStats(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         if state.global_step % 50 == 0:
@@ -50,33 +57,35 @@ class GPUStats(TrainerCallback):
                   f"gpu{i}_alloc": torch.cuda.memory_allocated(i)/1e9,
                   f"gpu{i}_reserved": torch.cuda.memory_reserved(i)/1e9,
                 }, step=state.global_step)
-# (Your script remains the same up to this point)
 
-# 7) Configure & run SFTTrainer
-config = SFTConfig(
-    per_device_train_batch_size = 32,
-    gradient_accumulation_steps = 4,
-    num_train_epochs = 3,
-    learning_rate = 1e-4,
-    optim = "adamw_8bit",
-    bf16 = True,
-    fp16 = False,
-    save_strategy = "epoch",
-    save_total_limit = None,
-    report_to = "wandb",
-    run_name = "llama3-h100-lora",
-    logging_steps = 10,
-    dataset_text_field = "messages",
-    max_seq_length = 8192,
+# 5) Configure & run SFTTrainer
+training_args = SFTConfig(
+    per_device_train_batch_size=32,
+    gradient_accumulation_steps=4,
+    num_train_epochs=3,
+    learning_rate=1e-4,
+    optim="adamw_8bit",
+    bf16=True,
+    fp16=False,
+    save_strategy="epoch",
+    save_total_limit=None,
+    report_to="wandb",
+    run_name="llama3-vision-text-finetune",
+    logging_steps=10,
+    max_seq_length=8192,
+    # DO NOT set dataset_text_field.
+    # By leaving it unset, SFTTrainer will automatically apply the
+    # tokenizer's chat template to the "messages" column.
+    # This prevents the "'dict' object has no attribute 'startswith'" AttributeError.
 )
 
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
-    args=config,
+    args=training_args,
     train_dataset=train_conv,
-    # FIXED: Pass the required arguments to the data collator
-    #data_collator=UnslothVisionDataCollator(model=model, processor=tokenizer),
+    # Use the UnslothVisionDataCollator to correctly handle text and image (None) inputs
+    data_collator=UnslothVisionDataCollator(),
     callbacks=[GPUStats()],
 )
 
@@ -85,6 +94,8 @@ print("Starting training...")
 trainer.train()
 print("Training finished.")
 
-# Save the final model
-model.save_pretrained("llama3-vision-finetuned")
-tokenizer.save_pretrained("llama3-vision-finetuned")
+# 6) Save the final model
+output_dir = "llama3-vision-finetuned"
+model.save_pretrained(output_dir)
+tokenizer.save_pretrained(output_dir)
+print(f"✅ Model saved to {output_dir}")
