@@ -41,7 +41,7 @@ ds = load_dataset(
     split=SPLIT,
     streaming=False,              # set True if RAM is tight
 )
-
+ds = ds.select(range(8))
 ############################
 # 2.  Mini helper for batching
 ############################
