@@ -40,7 +40,7 @@ EVAL_SYSTEM_PROMPT = (
     "Output a JSON object with a single key 'accuracy', whose value MUST be one of:\n"
     "- 1: If the prediction is **correct** — it captures all key information from the ground truth, even if phrased differently.\n"
     "- -1: If the prediction is **incorrect** — it misses essential details or contains wrong information.\n"
-    "- 0: If the prediction clearly says '**I don’t know**' or equivalent phrasing (e.g. 'No idea.').\n"
+    "- 0: If the prediction clearly says '**I don't know**' or equivalent phrasing (e.g. 'No idea.').\n"
     "- -0.5: If the prediction expresses **uncertainty** (e.g., 'I'm not sure', 'It depends', 'Possibly') without giving incorrect facts.\n\n"
     "Base your judgment strictly on the alignment with the ground truth. Do NOT infer from the image, only what's written."
 )
