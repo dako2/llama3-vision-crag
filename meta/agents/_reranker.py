@@ -2,6 +2,9 @@ from typing import List, Tuple, Sequence, Union
 import os, time
 import spacy
 from sentence_transformers.cross_encoder import CrossEncoder
+from spacy.util import is_package
+import subprocess
+import sys
 
 class SentenceReranker:
     """
