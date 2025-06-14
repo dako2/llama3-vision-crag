@@ -470,6 +470,12 @@ def main() -> None:
         help="OpenAI model for semantic evaluation. Pass 'None' to disable semantic evaluation.",
     )
     parser.add_argument(
+        "--model-name",
+        type=str,
+        default="meta-llama/Llama-3.2-11B-Vision-Instruct",
+        help="Model name or path for loading the LLM (default: meta-llama/Llama-3.2-11B-Vision-Instruct)",
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default=None,
@@ -552,7 +558,7 @@ def main() -> None:
 
     evaluator = CRAGEvaluator(
         dataset=dataset[split_to_use],
-        agent=UserAgent(search_pipeline=search_pipeline),
+        agent=UserAgent(search_pipeline=search_pipeline,model_name=args.model_name),
         eval_model_name=args.eval_model,
         num_conversations=args.num_conversations,
         show_progress=not args.no_progress,
