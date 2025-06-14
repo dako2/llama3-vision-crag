@@ -1,16 +1,7 @@
 from typing import List, Tuple, Sequence, Union
-import os, spacy
-from sentence_transformers.cross_encoder import CrossEncoder
-
-import time
-
-import os
-import time
-from typing import List, Tuple, Sequence, Union
-
+import os, time
 import spacy
 from sentence_transformers.cross_encoder import CrossEncoder
-
 
 class SentenceReranker:
     """
@@ -25,6 +16,12 @@ class SentenceReranker:
         spacy_model: str = "en_core_web_sm",
         disable_pipes: Tuple[str, ...] = ("ner", "tagger", "lemmatizer"),
     ):
+        # model_name = "en_core_web_sm"
+        # # Check if model is installed
+        if not is_package(spacy_model):
+            print(f"{spacy_model} not found. Downloading...")
+            subprocess.run([sys.executable, "-m", "spacy", "download", spacy_model], check=True)
+
         start = time.perf_counter()
 
         self.device = "cpu"
