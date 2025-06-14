@@ -219,9 +219,9 @@ class SimpleRAGAgent(BaseAgent):
         outputs = self.llm.generate(
             inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.1,
+                temperature=0.01,
                 top_p=0.9,
-                max_tokens=30,  # Short summary only
+                max_tokens=50,  # Short summary only
                 skip_special_tokens=True
             )
         )
@@ -463,7 +463,7 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.1,
+                temperature=0.5,
                 top_p=0.9,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True
@@ -503,8 +503,8 @@ class SimpleRAGAgent(BaseAgent):
 
         ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
-        final_output = []
-        for p, c in zip(predictions, image_summaries):
-            final_output.append(f"{c} | {p}")
+        # final_output = []
+        # for p, c in zip(predictions, image_summaries):
+        #     final_output.append(f"{c} | {p}")
 
-        return final_output
+        return predictions
