@@ -258,38 +258,61 @@ def evaluate_dataframe(
 # ---------------------------------------------------------------------------
 # New helper: build finetune answer column
 # ---------------------------------------------------------------------------
+from agents.filter_wrong_answers import grok_check_information_sufficiency
 
 def add_finetune_answer(
     df: pd.DataFrame,
     *,
     ground_truth_col: str = "ground_truth",
     output_col: str = "finetune_answer",
+    use_grok_check: bool = False,
+    grok_check_func=grok_check_information_sufficiency,  # function like grok_check_information_sufficiency(info, ground_truth)
 ) -> pd.DataFrame:
     """Attach a *finetune_answer* column ready for SFT / RLHF pipelines.
 
     Logic:
     - If the model answered correctly (exact or semantic) → copy *ground_truth*.
-    - Otherwise (miss or hallucination) → "I don't know".
+    - If incorrect but Grok says info is sufficient → use ground_truth or keep "I DON'T KNOW" depending on use case.
+    - Otherwise → "I DON'T KNOW".
 
-    Requires columns ``is_correct`` and ``is_miss`` that are created by
-    :func:`evaluate_dataframe`.
+    Requires: `is_correct`, `is_miss`, and optionally `messages` column if Grok is used.
     """
-
-    if {"is_correct", "is_miss"} - set(df.columns):
+    required_cols = {"is_correct", "is_miss"}
+    if required_cols - set(df.columns):
         raise ValueError(
-            "You must call `evaluate_dataframe` before `add_finetune_answer` so "
-            "that 'is_correct' and 'is_miss' columns exist."
+            f"Missing required columns: {required_cols - set(df.columns)}. "
+            "You must call `evaluate_dataframe` before this function."
         )
 
     df = df.copy()
+
+    # Default answer for all rows
     df[output_col] = np.where(
         df["is_correct"],
-        df[ground_truth_col].astype(str),  # ensures 1D string output
+        df[ground_truth_col].astype(str),
         "I DON'T KNOW"
     )
 
-    return df
+    if use_grok_check:
+        if grok_check_func is None:
+            raise ValueError("You must provide `grok_check_func` when `use_grok_check=True`")
 
+        for i, row in df.iterrows():
+            if not row["is_correct"] and row["is_miss"]:
+                # Extract user input
+                messages = row.get("messages", [])
+                user_msg = next((m["content"] for m in messages if m["role"] == "user"), "")
+                ground_truth = row.get(ground_truth_col, "")
+                try:
+                    grok_result = grok_check_func(user_msg, ground_truth)
+                    parsed = json.loads(grok_result)
+                    if parsed.get("if_info_sufficient") == 1:
+                        df.at[i, output_col] = ground_truth  # optional: use gt instead of IDK
+                except Exception as e:
+                    logging.warning(f"Grok check failed at row {i}: {e}")
+                    continue
+
+    return df
 
 __all__ = [
     "evaluate_response",

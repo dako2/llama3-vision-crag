@@ -310,10 +310,8 @@ class SimpleRAGAgent(BaseAgent):
 
             print("Fast:", " ".join(flat_sentences))
             print("reranking takes %.1f seconds"%(time.time()-t0))
-
             search_results_batch.append(flat_sentences)
         
-
         # Prepare formatted inputs with RAG context for each query
         messages_batch = []
         for idx, (query, image, caption, message_history, rag_context) in enumerate(
@@ -506,6 +504,6 @@ class SimpleRAGAgent(BaseAgent):
 
         final_output = []
         for p, c in zip(predictions, image_summaries):
-            final_output.append("{c} | {p}")
+            final_output.append(f"{c} | {p}")
 
         return final_output
