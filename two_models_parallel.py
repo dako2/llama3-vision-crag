@@ -8,8 +8,8 @@ class VConfig:
     model: str
     gpu_util: float = 0.92
     tp: int = 1
-    max_len: int = 4096
-    max_seqs: int = 256
+    max_len: int = 8192
+    max_seqs: int = 75
 
 def build_engine(cfg: VConfig) -> vllm.LLM:
     return vllm.LLM(
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     # 1️⃣  Caption with vision model then unload
-    vision_engine = build_engine(VConfig("./llama3-vision-11b", gpu_util=0.6))
+    vision_engine = build_engine(VConfig("meta-llama/Llama-3.2-11B-Vision-Instruct", gpu_util=0.85))
     cap = caption(Image.open(args.img), vision_engine)
     print("🔎 Caption:", cap)
     del vision_engine; torch.cuda.empty_cache()
