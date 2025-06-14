@@ -54,7 +54,7 @@ def normalize_answer(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure"]
+    uncertain_phrases = ["don't know", "don't", "not sure", "unable"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I Don't Know"
@@ -191,7 +191,7 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = """Identify the exact specific object name or identity in the image given a user's query.\n #Notes: 1) Don't answer the question itself but only provide the name or keywords.\n 2) Be concise in one sentence.\n 3) If you are not sure, directly answer 'i don't know'.\n#Query:{query}\n#Answer:"""
+        summarize_prompt = """Identity the object that the user is asking in the object. Don't answer the question itself. If you are not sure, directly answer 'i don't know'.\n#Query:{query}\n#Answer:"""
         
         inputs = []
         for query, image in zip(queries, images):

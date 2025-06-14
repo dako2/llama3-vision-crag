@@ -285,7 +285,7 @@ def add_finetune_answer(
     df[output_col] = np.where(
         df["is_correct"],
         df[ground_truth_col].astype(str),  # ensures 1D string output
-        "I don't know"
+        "I DON'T KNOW"
     )
 
     return df
