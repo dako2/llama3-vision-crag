@@ -504,4 +504,8 @@ class SimpleRAGAgent(BaseAgent):
 
         ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
-        return predictions
+        final_output = []
+        for p, c in zip(predictions, image_summaries):
+            final_output.append("{c} | {p}")
+
+        return final_output

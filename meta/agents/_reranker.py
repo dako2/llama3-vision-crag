@@ -82,8 +82,7 @@ class SentenceReranker:
         sents = self._split(text)
         pairs = [(query, s) for s in sents]
         scores = self._batched_scores(pairs)
-        # ranked = [(s, sc) for s, sc in zip(sents, scores) if sc > min_score]
-        ranked = [s for s, sc in zip(sents, scores) if sc > min_score]
+        ranked = [(s, sc) for s, sc in zip(sents, scores) if sc > min_score]
         ranked.sort(key=lambda x: x[1], reverse=True)
         return ranked[:k]
 
