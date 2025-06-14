@@ -118,8 +118,8 @@ class GPUStats(TrainerCallback):
 
 # 7) Configure & run SFTTrainer
 config = SFTConfig(
-    per_device_train_batch_size=32,
-    gradient_accumulation_steps=8,
+    per_device_train_batch_size=16,
+    gradient_accumulation_steps=4,
     num_train_epochs=3,
     learning_rate=1e-4,
     optim="adamw_torch",                # <- full precision optimizer
@@ -129,7 +129,7 @@ config = SFTConfig(
     save_total_limit=1,
     report_to="wandb", 
     run_name="cragmm-vision-16bit",
-    logging_steps=10,
+    logging_steps=4,
     logging_dir="./logs",
     dataset_text_field="messages",
     dataset_kwargs={"skip_prepare_dataset": True},
