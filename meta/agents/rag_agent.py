@@ -57,7 +57,7 @@ def normalize_answer(text: str) -> str:
     uncertain_phrases = ["don't know", "don't", "not sure"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
-        return "i don't know"
+        return "I Don't Know"
     return text
 
 class SimpleRAGAgent(BaseAgent):
@@ -433,7 +433,8 @@ class SimpleRAGAgent(BaseAgent):
         # Step 3: Prepare RAG-enhanced inputs only for non-skipped
         rag_inputs = []
         original_indices = []
-
+        # Maintain message history for all queries (skipped and not skipped)
+        full_messages_batch = [None] * len(queries)
         # Filter inputs for generation
         for idx, (skip, query, image, summary, history) in enumerate(zip(
             should_skip, queries, images, image_summaries, message_histories
@@ -456,6 +457,7 @@ class SimpleRAGAgent(BaseAgent):
                 "multi_modal_data": {"image": image}
             })
             original_indices.append(idx)
+            full_messages_batch[idx] = messages  # ✅ Save message to aligned batch
 
         # Step 4: Generate responses
         print(f"Generating responses for {len(rag_inputs)} queries")
@@ -482,7 +484,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated responses: {predictions} ")
 
         rows = []
-        for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, messages_batch):
+        for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
             rows.append({"session_id": sid, "turn_idx": 0, 
             "query": q,
             "ground_truth": gt[0],
