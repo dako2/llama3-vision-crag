@@ -447,7 +447,7 @@ def main() -> None:
         help="Dataset split to use ('validation', 'public_test')",
     )
     parser.add_argument(
-        "--num",
+        "--num_conversations",
         type=int,
         default=10,
         help="Number of conversations to evaluate (default: -1). -1 evaluates all conversations, while a positive number evaluates that many conversations.",
@@ -458,7 +458,7 @@ def main() -> None:
         help="Suppress web search API when calling the agent"
     )
     parser.add_argument(
-        "--display",
+        "--display-conversations",
         type=int,
         default=10,
         help="Number of evaluation examples to show",
