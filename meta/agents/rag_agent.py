@@ -445,7 +445,6 @@ class SimpleRAGAgent(BaseAgent):
 
         rows = []
         for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, messages_batch):
-            print(sid, q, gt[0], pred, img, mes)
             rows.append({"session_id": sid, "turn_idx": 0, 
             "query": q,
             "ground_truth": gt[0],
