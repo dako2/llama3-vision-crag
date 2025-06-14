@@ -191,7 +191,7 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}."""
+        summarize_prompt = """Can you provide the exact identity name that I was asking previously in the image? -- my ask before: {query}"""
         
         inputs = []
         for query, image in zip(queries, images):
