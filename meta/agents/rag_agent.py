@@ -16,7 +16,7 @@ import agents.evaluation_utils as ev
 
 fast_rr = SentenceReranker()
 # Configuration constants
-AICROWD_SUBMISSION_BATCH_SIZE = 1
+AICROWD_SUBMISSION_BATCH_SIZE = 8
 
 TARGET_WIDTH = 960
 TARGET_HEIGHT = 1280
@@ -42,11 +42,23 @@ VLLM_GPU_MEMORY_UTILIZATION = 0.95
 
 # These are model specific parameters to get the model to run on a single NVIDIA L40s GPU
 MAX_MODEL_LEN = 8192
-MAX_NUM_SEQS = 1
+MAX_NUM_SEQS = 4
 MAX_GENERATION_TOKENS = 75
 
 # Number of search results to retrieve
 NUM_SEARCH_RESULTS = 5
+
+def normalize_answer(text: str) -> str:
+    """
+    Collapse any answer that indicates uncertainty into
+    the canonical string "i don't know".
+    """
+    text_lower = text.lower()
+    uncertain_phrases = ["don't know", "don't", "not sure"]
+
+    if any(phrase in text_lower for phrase in uncertain_phrases):
+        return "i don't know"
+    return text
 
 class SimpleRAGAgent(BaseAgent):
     """
@@ -214,9 +226,9 @@ class SimpleRAGAgent(BaseAgent):
         )
         
         # Extract and clean summaries
-        summaries = [output.outputs[0].text.strip() for output in outputs]
+        summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-         
+
         return summaries
     
     def prepare_rag_enhanced_inputs(
@@ -248,7 +260,13 @@ class SimpleRAGAgent(BaseAgent):
     
         # Retrieve relevant information for each query
         for query, summary in zip(queries, image_summaries):
+
+            if summary == "i don't know":
+                search_results_batch.append("")
+                continue
+
             print("searching:",query)
+
             q = f"{query}...{summary}"
 
             rag_context = []
@@ -301,6 +319,9 @@ class SimpleRAGAgent(BaseAgent):
         for idx, (query, image, caption, message_history, rag_context) in enumerate(
             zip(queries, images, image_summaries, message_histories, search_results_batch)
         ):
+            if caption == "i don't know":
+                messages_batch.append([])
+                continue
 
             #SYSTEM_PROMPT = """You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."""
             #user_prompt = """Context information is below. {context_str} Given the context information and using your prior knowledge, please provide your answer in concise style. End your answer with a period. Answer the question in one line only. Question: {query_str} Answer: """
@@ -403,31 +424,42 @@ class SimpleRAGAgent(BaseAgent):
 
         # Step 1: Batch summarize all images for search terms
         image_summaries = self.batch_summarize_images(queries, images)
-    
-        # Step 2: Prepare RAG-enhanced inputs in batch
-        messages_batch = self.prepare_rag_enhanced_inputs(
-            queries, images, image_summaries, message_histories
-        )
 
+        # Step 2: Determine which queries should skip LLM generation
+        should_skip = [summary.lower().strip() == "i don't know" for summary in image_summaries]
+
+        #here the returned image_summaries might contain i don't know
+
+        # Step 3: Prepare RAG-enhanced inputs only for non-skipped
         rag_inputs = []
-        for messages, image in zip(messages_batch, images):
-            # Apply chat template
+        original_indices = []
+
+        # Filter inputs for generation
+        for idx, (skip, query, image, summary, history) in enumerate(zip(
+            should_skip, queries, images, image_summaries, message_histories
+        )):
+            if skip:
+                continue
+
+            messages = self.prepare_rag_enhanced_inputs(
+                [query], [image], [summary], [history]
+            )[0]  # unpack single result
+
             formatted_prompt = self.tokenizer.apply_chat_template(
                 messages,
                 add_generation_prompt=True,
                 tokenize=False
             )
-            
+
             rag_inputs.append({
                 "prompt": formatted_prompt,
-                "multi_modal_data": {
-                    "image": image
-                }
+                "multi_modal_data": {"image": image}
             })
+            original_indices.append(idx)
 
-        # Step 3: Generate responses using the batch of RAG-enhanced prompts
+        # Step 4: Generate responses
         print(f"Generating responses for {len(rag_inputs)} queries")
-        outputs = self.llm.generate(
+        generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.1,
@@ -436,12 +468,18 @@ class SimpleRAGAgent(BaseAgent):
                 skip_special_tokens=True
             )
         )
- 
-        
-        # # Extract and return the generated responses
-        predictions = [output.outputs[0].text for output in outputs]
-        print(f"Successfully generated {len(predictions)} responses")
+        generated_texts = [output.outputs[0].text for output in generated_outputs]
+        print(f"Successfully generated {len(generated_texts)} responses")
 
+        # Step 5: Merge skipped + generated back in original order
+        predictions = [""] * len(queries)
+        for idx, text in zip(original_indices, generated_texts):
+            predictions[idx] = text
+        for idx, skip in enumerate(should_skip):
+            if skip:
+                predictions[idx] = "I don't know"
+
+        print(f"Successfully generated responses: {predictions} ")
 
         rows = []
         for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, messages_batch):
@@ -461,6 +499,7 @@ class SimpleRAGAgent(BaseAgent):
         scores = ev.calculate_scores(df)
 
         print("Accuracy:", scores["accuracy"])
+
         ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
         return predictions
