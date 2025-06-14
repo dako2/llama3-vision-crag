@@ -306,7 +306,7 @@ class SimpleRAGAgent(BaseAgent):
             new_results = fast_rr.batch_rerank(rag_context, q, k=5, min_score=0)
             print(new_results)
             
-            flat_sentences = [s for group in new_results for s in group]
+            flat_sentences = [s for group in new_results for (s, _) in group]
 
             print("Fast:", " ".join(flat_sentences))
             print("reranking takes %.1f seconds"%(time.time()-t0))
