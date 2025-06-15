@@ -223,7 +223,7 @@ class SimpleRAGAgent(BaseAgent):
             inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.01,
-                top_p=0.8,
+                top_p=0.85,
                 max_tokens=30,  # Short summary only
                 skip_special_tokens=True,
                 seed=42
@@ -517,7 +517,7 @@ class SimpleRAGAgent(BaseAgent):
             rag_inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.01,
-                top_p=0.8,
+                top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
                 seed=42
@@ -534,7 +534,7 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 predictions[idx] = "I don't know"
 
-        predictions = normalize_answer(predictions)
+        predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
         # rows = []
