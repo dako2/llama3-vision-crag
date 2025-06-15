@@ -505,7 +505,7 @@ class SimpleRAGAgent(BaseAgent):
         df = pd.DataFrame(rows)
         df = ev.evaluate_dataframe(df)           # flags
         
-        #df = ev.add_finetune_answer(df)          # finetune_answer col
+        df = ev.add_finetune_answer(df)          # finetune_answer col
         scores = ev.calculate_scores(df)
 
         print("Accuracy:", scores["accuracy"])

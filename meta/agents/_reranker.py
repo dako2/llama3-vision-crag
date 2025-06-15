@@ -79,8 +79,8 @@ class SentenceReranker:
     def rerank(
         self, text: str, query: str, k: int = 3, min_score: float = 0.0
     ) -> List[Tuple[str, float]]:
-        #sents = self._split(text)
-        sents = self._split_nlp(text)
+        sents = self._split(text)
+        #sents = self._split_nlp(text)
         pairs = [(query, s) for s in sents]
         scores = self._batched_scores(pairs)
         ranked = [(s, sc) for s, sc in zip(sents, scores) if sc > min_score]
