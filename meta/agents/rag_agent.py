@@ -397,7 +397,13 @@ class SimpleRAGAgent(BaseAgent):
                 messages = messages + message_history
                 
             messages = [
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": user_prompt.format(caption=caption,query_str=query, context_str=rag_context)}]},
+                {
+                    "role": "user", 
+                    "content": [
+                            # {"type": "image"}, 
+                            {"type": "text", "text": user_prompt.format(caption=caption,query_str=query, context_str=rag_context)}
+                        ]
+                },
             ]
             # Add the current query
             #messages.append({"role": "user", "content": })
@@ -509,7 +515,7 @@ class SimpleRAGAgent(BaseAgent):
 
             rag_inputs.append({
                 "prompt": formatted_prompt,
-                "multi_modal_data": {"image": image}
+                # "multi_modal_data": {"image": image}
             })
             original_indices.append(idx)
             full_messages_batch[idx] = messages  # ✅ Save message to aligned batch
