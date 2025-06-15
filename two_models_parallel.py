@@ -8,7 +8,7 @@ class VConfig:
     model: str
     gpu_util: float = 0.92
     tp: int = 1
-    max_len: int = 8192
+    max_len: int = 2048
     max_seqs: int = 75
 
 def build_engine(cfg: VConfig) -> vllm.LLM:

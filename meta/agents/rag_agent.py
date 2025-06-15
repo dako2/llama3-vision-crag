@@ -327,7 +327,7 @@ class SimpleRAGAgent(BaseAgent):
             for i, result in enumerate(results):
                 #result = WebSearchResult(result)
 
-                snippet = result.get('page_content', '')
+                snippet = result.get('page_snippet', '')
                 print(result)
                 rag_context.append(str(snippet))
 
@@ -379,7 +379,7 @@ class SimpleRAGAgent(BaseAgent):
             user_prompt = (
                 "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
                 #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
-                "Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
+                #"Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
                 "The image {caption}\n"
                 "Some reference might be useful: {context_str}\n"
                 "Based on the above information, answer my question: {query_str}\n"
@@ -387,17 +387,20 @@ class SimpleRAGAgent(BaseAgent):
             )
 
             # Structure messages with image and RAG context
-            messages = [
-                #{"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": [{"type": "image"}]}
-            ]
-            
+            # messages = [
+            #     #{"role": "system", "content": SYSTEM_PROMPT},
+            #     {"role": "user", "content": [{"type": "image"}]}
+            # ]
+        
             # Add conversation history for multi-turn conversations
             if message_history:
                 messages = messages + message_history
                 
+            messages = [
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": user_prompt.format(caption=caption,query_str=query, context_str=rag_context)}]},
+            ]
             # Add the current query
-            messages.append({"role": "user", "content": user_prompt.format(caption=caption,query_str=query, context_str=rag_context)})
+            #messages.append({"role": "user", "content": })
             messages_batch.append(messages)
         
         return messages_batch
