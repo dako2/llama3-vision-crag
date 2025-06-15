@@ -319,7 +319,7 @@ class SimpleRAGAgent(BaseAgent):
 
             print("searching:",query)
 
-            q = f"{query}...{summary}"
+            q = f"{query} {summary}"
             #q = f"{search_summary}"
 
             rag_context = []
@@ -377,8 +377,8 @@ class SimpleRAGAgent(BaseAgent):
             #SYSTEM_PROMPT = """You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."""
             #user_prompt = """Context information is below. {context_str} Given the context information and using your prior knowledge, please provide your answer in concise style. End your answer with a period. Answer the question in one line only. Question: {query_str} Answer: """
             user_prompt = (
-                #"You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
-                "You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
+                "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
+                #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
                 "Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
                 "The image {caption}\n"
                 "Some reference might be useful: {context_str}\n"
@@ -534,6 +534,7 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 predictions[idx] = "I don't know"
 
+        predictions = normalize_answer(predictions)
         print(f"Successfully generated responses: {predictions} ")
 
         # rows = []
