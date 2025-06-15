@@ -191,14 +191,56 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = """Provide the exact identity name that I was asking previously in the image -- {query}. If you are not sure, please respond 'I don't know' directly."""
+        summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
         #summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}.If """
+        another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
                 {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
+            ]
+            
+            # Format prompt using the tokenizer
+            formatted_prompt = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            print(formatted_prompt)
+            
+            inputs.append({
+                "prompt": formatted_prompt,
+                "multi_modal_data": {
+                    "image": image
+                }
+            })
+            messages_batch.append(messages)
+        
+        # Generate summaries in a single batch call
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.01,
+                top_p=0.9,
+                max_tokens=50,  # Short summary only
+                skip_special_tokens=True
+            )
+        )
+        
+        # Extract and clean summaries
+        summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
+        print(f"Generated {len(summaries)} image summaries")
+
+
+
+
+        inputs = []
+        messages_batch = []
+        for query, caption, image in zip(queries, summaries, images):
+            messages = [
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": another_prompt.format(query=query, caption=caption)}]},
             ]
             
             # Format prompt using the tokenizer
