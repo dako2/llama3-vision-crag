@@ -225,7 +225,8 @@ class SimpleRAGAgent(BaseAgent):
                 temperature=0.01,
                 top_p=0.8,
                 max_tokens=30,  # Short summary only
-                skip_special_tokens=True
+                skip_special_tokens=True,
+                seed=42
             )
         )
         
@@ -518,7 +519,8 @@ class SimpleRAGAgent(BaseAgent):
                 temperature=0.01,
                 top_p=0.8,
                 max_tokens=MAX_GENERATION_TOKENS,
-                skip_special_tokens=True
+                skip_special_tokens=True,
+                seed=42
             )
         )
         generated_texts = [output.outputs[0].text for output in generated_outputs]
