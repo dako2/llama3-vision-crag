@@ -223,8 +223,8 @@ class SimpleRAGAgent(BaseAgent):
             inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.01,
-                top_p=0.9,
-                max_tokens=50,  # Short summary only
+                top_p=0.8,
+                max_tokens=30,  # Short summary only
                 skip_special_tokens=True
             )
         )
@@ -515,8 +515,8 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.5,
-                top_p=0.9,
+                temperature=0.01,
+                top_p=0.8,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True
             )
