@@ -144,7 +144,7 @@ class SimpleRAGAgent(BaseAgent):
             } # In the CRAG-MM dataset, every conversation has at most 1 image
         )
         self.tokenizer = self.llm.get_tokenizer()
-                
+        
         if self.tokenizer.chat_template is None:
             tmpl_file = Path(self.model_name) / "chat_template.json"
             if tmpl_file.exists():
@@ -271,10 +271,10 @@ class SimpleRAGAgent(BaseAgent):
         )
         
         # Extract and clean summaries
-        summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
-        print(f"Generated {len(summaries)} image summaries")
+        summaries_2 = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
+        print(f"Generated {len(summaries_2)} image summaries")
 
-        return summaries, messages_batch
+        return summaries, messages_batch, summaries_2
 
     def prepare_image_search_inputs(
         self,
@@ -289,7 +289,8 @@ class SimpleRAGAgent(BaseAgent):
         queries: List[str], 
         images: List[Image.Image], 
         image_summaries: List[str],
-        message_histories: List[List[Dict[str, Any]]]
+        message_histories: List[List[Dict[str, Any]]],
+        search_summaries: List[str],
     ) -> List[dict]:
         """
         Prepare RAG-enhanced inputs for the model by retrieving relevant information in batch.
@@ -312,7 +313,7 @@ class SimpleRAGAgent(BaseAgent):
         search_results_batch = []
     
         # Retrieve relevant information for each query
-        for query, summary in zip(queries, image_summaries):
+        for query, summary, search_summary in zip(queries, image_summaries, search_summaries):
 
             if summary == "i don't know":
                 search_results_batch.append("")
@@ -320,7 +321,8 @@ class SimpleRAGAgent(BaseAgent):
 
             print("searching:",query)
 
-            q = f"{query}...{summary}"
+            #q = f"{query}...{summary}"
+            q = f"{search_summary}"
 
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
@@ -475,7 +477,7 @@ class SimpleRAGAgent(BaseAgent):
         images = resize_images(images)
 
         # Step 1: Batch summarize all images for search terms
-        image_summaries, caption_messages_batch = self.batch_summarize_images(queries, images)
+        image_summaries, caption_messages_batch, image_summaries_2 = self.batch_summarize_images(queries, images)
 
         # Step 2: Determine which queries should skip LLM generation
         should_skip = [summary.lower().strip() == "i don't know" for summary in image_summaries]
@@ -488,14 +490,14 @@ class SimpleRAGAgent(BaseAgent):
         # Maintain message history for all queries (skipped and not skipped)
         full_messages_batch = [None] * len(queries)
         # Filter inputs for generation
-        for idx, (skip, query, image, summary, history) in enumerate(zip(
-            should_skip, queries, images, image_summaries, message_histories
+        for idx, (skip, query, image, summary, history, summary_search) in enumerate(zip(
+            should_skip, queries, images, image_summaries, message_histories, image_summaries_2
         )):
             if skip:
                 continue
 
             messages = self.prepare_rag_enhanced_inputs(
-                [query], [image], [summary], [history]
+                [query], [image], [summary], [history], [summary_search]
             )[0]  # unpack single result
 
             formatted_prompt = self.tokenizer.apply_chat_template(
