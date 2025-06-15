@@ -191,9 +191,9 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        #summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}.If """
-        another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
+        #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
+        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
         messages_batch = []
@@ -232,9 +232,6 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and clean summaries
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-
-
-
 
         # inputs = []
         # messages_batch = []
@@ -329,7 +326,7 @@ class SimpleRAGAgent(BaseAgent):
             for i, result in enumerate(results):
                 #result = WebSearchResult(result)
 
-                snippet = result.get('page_snippet', '')
+                snippet = result.get('page_content', '')
                 print(result)
                 rag_context.append(str(snippet))
 
