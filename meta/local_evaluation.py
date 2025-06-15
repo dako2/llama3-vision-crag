@@ -270,9 +270,9 @@ class CRAGEvaluator:
                     "total_turn_count": batch["total_turn_counts"][idx],
                     "interaction_id_history": interaction_id_histories[idx],
                     "answer_history": batch["answer_histories"][idx],
-                    "image_caption": batch["image_summaries"][idx],
-                    "image_caption_messages": batch["caption_messages_batch"][idx],
-                    "messages": batch["full_messages_batch"][idx],
+                    "image_caption": image_summaries[idx],
+                    "image_caption_messages": caption_messages_batch[idx],
+                    "messages": full_messages_batch[idx],
 
                 })
                 self.session_ids_evaluated.add(batch["session_ids"][idx])
