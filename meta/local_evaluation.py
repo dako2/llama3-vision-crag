@@ -224,6 +224,8 @@ class CRAGEvaluator:
             queries = batch["queries"]
             images = batch["images"]
             conversation_histories = batch["conversation_histories"]
+            temps = batch["temps"]
+            print("hi qi i saw tempssssssss\n\n\n")
 
             message_histories = []
             interaction_id_histories = []
@@ -246,7 +248,7 @@ class CRAGEvaluator:
                 interaction_id_histories.append(interaction_id_history)
 
             # Generate responses for the current batch
-            agent_responses = self.agent.batch_generate_response(queries, images, message_histories, batch["session_ids"], batch["answers"])
+            agent_responses, full_messages_batch, image_summaries, caption_messages_batch = self.agent.batch_generate_response(queries, images, message_histories, batch["session_ids"], batch["answers"])
             #agent_responses = self.truncate_agent_responses(agent_responses) # Truncase each response to the maximum allowed length (75 tokens)
             
             # Collect responses and add evaluation data
@@ -266,7 +268,12 @@ class CRAGEvaluator:
                     "ground_truth": batch["answers"][idx],
                     "agent_response": agent_response,
                     "total_turn_count": batch["total_turn_counts"][idx],
-                    "interaction_id_history": interaction_id_histories[idx]
+                    "interaction_id_history": interaction_id_histories[idx],
+                    "answer_history": batch["answer_histories"][idx],
+                    "image_caption": batch["image_summaries"][idx],
+                    "image_caption_messages": batch["caption_messages_batch"][idx],
+                    "messages": batch["full_messages_batch"][idx],
+
                 })
                 self.session_ids_evaluated.add(batch["session_ids"][idx])
 

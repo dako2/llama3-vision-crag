@@ -191,10 +191,11 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of brief text summaries, one per image.
         """
         # Prepare image summarization prompts in batch
-        #summarize_prompt = """Can you provide the exact identity name that I was asking previously in the image? -- my ask before: {query}"""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}."""
+        summarize_prompt = """Provide the exact identity name that I was asking previously in the image -- {query}. If you are not sure, please respond 'I don't know' directly."""
+        #summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}.If """
         
         inputs = []
+        messages_batch = []
         for query, image in zip(queries, images):
             messages = [
                 {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
@@ -214,6 +215,7 @@ class SimpleRAGAgent(BaseAgent):
                     "image": image
                 }
             })
+            messages_batch.append(messages)
         
         # Generate summaries in a single batch call
         outputs = self.llm.generate(
@@ -230,7 +232,7 @@ class SimpleRAGAgent(BaseAgent):
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
 
-        return summaries
+        return summaries, messages_batch
 
     def prepare_image_search_inputs(
         self,
@@ -431,7 +433,7 @@ class SimpleRAGAgent(BaseAgent):
         images = resize_images(images)
 
         # Step 1: Batch summarize all images for search terms
-        image_summaries = self.batch_summarize_images(queries, images)
+        image_summaries, caption_messages_batch = self.batch_summarize_images(queries, images)
 
         # Step 2: Determine which queries should skip LLM generation
         should_skip = [summary.lower().strip() == "i don't know" for summary in image_summaries]
@@ -491,29 +493,30 @@ class SimpleRAGAgent(BaseAgent):
 
         print(f"Successfully generated responses: {predictions} ")
 
-        rows = []
-        for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
-            rows.append({"session_id": sid, "turn_idx": 0, 
-            "query": q,
-            "ground_truth": gt[0],
-            "prediction": pred,
-            "caption": caption,
-            "messages": mes,
-            },)
+        # rows = []
+        # for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
+        #     rows.append({"session_id": sid, "turn_idx": 0, 
+        #     "query": q,
+        #     "ground_truth": gt[0],
+        #     "prediction": pred,
+        #     "caption": caption,
+        #     "messages": mes,
+        #     },)
 
-        # after predictions
-        df = pd.DataFrame(rows)
-        df = ev.evaluate_dataframe(df)           # flags
+        # # after predictions
+        # df = pd.DataFrame(rows)
+        # df = ev.evaluate_dataframe(df)           # flags
         
-        df = ev.add_finetune_answer(df)          # finetune_answer col
-        scores = ev.calculate_scores(df)
+        # df = ev.add_finetune_answer(df)          # finetune_answer col
+        
+        # scores = ev.calculate_scores(df)
 
-        print("Accuracy:", scores["accuracy"])
+        # print("Accuracy:", scores["accuracy"])
 
-        ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
+        # ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
         # final_output = []
         # for p, c in zip(predictions, image_summaries):
         #     final_output.append(f"{c} | {p}")
 
-        return predictions
+        return predictions, full_messages_batch, image_summaries, caption_messages_batch

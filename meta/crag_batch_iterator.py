@@ -153,6 +153,7 @@ class CRAGTurnBatchIterator:
             "conversation_history": conversation_history,
             "answer_history": answer_history,
             "total_turn_count": total_turn_count,
+            "temp": None,
         }
 
     def _collate_batch(self, batch: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
@@ -181,6 +182,7 @@ class CRAGTurnBatchIterator:
             "conversation_histories": [],
             "answer_histories": [],
             "total_turn_counts": [],
+            "temps": [],
         }
 
         # Collect data from each item
@@ -198,6 +200,7 @@ class CRAGTurnBatchIterator:
 
             batch_data["query_categories"].append(item["query_category"])
             batch_data["domains"].append(item["domain"])
+            batch_data["temps"].append(item["temp"])
             batch_data["dynamisms"].append(item["dynamism"])
 
             batch_data["conversation_histories"].append(item["conversation_history"])
