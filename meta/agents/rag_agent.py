@@ -231,6 +231,14 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Generated {len(summaries)} image summaries")
 
         return summaries
+
+    def prepare_image_search_inputs(
+        self,
+        queries: List[str], 
+        images: List[Image.Image], 
+        image_summaries: List[str],
+    ) -> List[dict]:
+        pass
     
     def prepare_rag_enhanced_inputs(
         self, 
