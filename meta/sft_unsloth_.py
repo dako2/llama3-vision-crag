@@ -66,23 +66,32 @@ def _resize(img: Image.Image) -> Image.Image:
     return img.resize(TARGET_SIZE, Image.LANCZOS) if img.size != TARGET_SIZE else img
 
 def _inject_real_image(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Replace the placeholder string with the real PIL image."""
+    """
+    Replace every image placeholder (session-id string) with the real PIL image.
+    If *any* placeholder cannot be filled, we drop the whole conversation.
+    """
     try:
-        msgs = rec["messages"]
-        # The placeholder image string is in the first user turn
-        for part in msgs[0]["content"]:
-            if part["type"] == "image":
-                sid = part["image"]          # this is the session_id placeholder
-                print("sid:",sid)
-                img = IMAGE_MAP.get(sid)
-                if img is None:
-                    return None
-                part["image"] = _resize(img)
-                return {"messages": msgs}
-        return None
+        sid = rec.get("session_id")                       # keep for fast look-up
+        success = True
+
+        for msg in rec["messages"]:
+            for part in msg["content"]:
+                if part.get("type") == "image":
+                    img_key = part["image"] or sid        # older files use sid
+                    img = IMAGE_MAP.get(img_key)
+                    if img is None:
+                        success = False                   # missing picture
+                        break
+                    part["image"] = _resize(img)
+
+            if not success:
+                break
+
+        return rec if success else None                   # drop if any gap
     except Exception as e:
-        print(f"[ERROR] session_id={rec.get('session_id')} – {e}")
+        print(f"[ERROR] {rec.get('session_id')} – {e}")
         return None
+
 
 def load_or_build_dataset() -> List[Dict[str, Any]]:
     if os.path.exists(PICKLE_PATH):
