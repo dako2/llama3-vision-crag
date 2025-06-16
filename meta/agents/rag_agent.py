@@ -380,8 +380,8 @@ class SimpleRAGAgent(BaseAgent):
                 "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
                 #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
                 #"Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
-                "The image {caption}\n"
-                "Some reference might be useful: {context_str}\n"
+                "##Some Reference: {context_str}\n"
+                "##The image caption: {caption}\n\n"
                 "Based on the above information, answer my question: {query_str}\n"
                 #"if you are not sure, please answer 'i don't know' directly."
             )
@@ -529,9 +529,11 @@ class SimpleRAGAgent(BaseAgent):
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
-                seed=42
+                seed=3407,#3407, 42
+                n=1,
             )
         )
+
         generated_texts = [output.outputs[0].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
@@ -546,30 +548,27 @@ class SimpleRAGAgent(BaseAgent):
         predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
-        # rows = []
-        # for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
-        #     rows.append({"session_id": sid, "turn_idx": 0, 
-        #     "query": q,
-        #     "ground_truth": gt[0],
-        #     "prediction": pred,
-        #     "caption": caption,
-        #     "messages": mes,
-        #     },)
+        rows = []
+        for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
+            rows.append({"session_id": sid, "turn_idx": 0, 
+            "query": q,
+            "ground_truth": gt[0],
+            "prediction": pred,
+            "caption": caption,
+            "messages": mes,
+            },)
 
-        # # after predictions
-        # df = pd.DataFrame(rows)
-        # df = ev.evaluate_dataframe(df)           # flags
+        # after predictions
+        df = pd.DataFrame(rows)
+        df = ev.evaluate_dataframe(df)           # flags
+        #df = ev.add_finetune_answer(df)          # finetune_answer col
         
-        # df = ev.add_finetune_answer(df)          # finetune_answer col
-        
-        # scores = ev.calculate_scores(df)
+        scores = ev.calculate_scores(df)
+        print("Accuracy:", scores["accuracy"])
+        ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
-        # print("Accuracy:", scores["accuracy"])
-
-        # ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
-
-        # final_output = []
-        # for p, c in zip(predictions, image_summaries):
-        #     final_output.append(f"{c} | {p}")
+        final_output = []
+        for p, c in zip(predictions, image_summaries):
+            final_output.append(f"{c} | {p}")
 
         return predictions, full_messages_batch, image_summaries, caption_messages_batch
