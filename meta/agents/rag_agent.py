@@ -394,12 +394,12 @@ class SimpleRAGAgent(BaseAgent):
             #SYSTEM_PROMPT = """You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."""
             #user_prompt = """Context information is below. {context_str} Given the context information and using your prior knowledge, please provide your answer in concise style. End your answer with a period. Answer the question in one line only. Question: {query_str} Answer: """
             user_prompt = (
+                "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
                 #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
                 #"Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
-                "Some reference might be useful: {context_str}\n"
                 "The image {caption}\n"
+                "Some reference might be useful: {context_str}\n"
                 "Based on the above information, answer my question: {query_str}\n"
-                "You are in the final factual Q&A competition. Please respond concisely in one sentence. If you don't know the answer, respond with 'I don't know'."
                 #"if you are not sure, please answer 'i don't know' directly."
             )
 
@@ -542,8 +542,8 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.1,
-                top_p=0.9,
+                temperature=0.01,
+                top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
                 seed=42
