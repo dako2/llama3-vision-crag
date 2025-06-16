@@ -326,10 +326,10 @@ class SimpleRAGAgent(BaseAgent):
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
             for i, result in enumerate(results):
-
-                result1 = WebSearchResult(result)
-                snippet = result1.get('page_content', '')
-                print(result1)
+                #result1 = WebSearchResult(result)
+                #snippet = result1.get('page_content', '')
+                snippet = result.get('page_snippet', '')
+                print(snippet)
                 
                 if snippet:
                     rag_context.append(str(snippet))
