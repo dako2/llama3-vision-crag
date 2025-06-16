@@ -1,203 +1,80 @@
-#!/usr/bin/env python
-"""postprocess_sft_labeling_textonly.py – debug‑friendly edition (text‑only)
-──────────────────────────────────────────────────────────────────────────────
-Reads a CRAG evaluation CSV (vision or text) and writes SFT‑ready chat JSONL
-for *Llama‑3.1‑8B* fine‑tuning **without any image content**.
+from unsloth import FastLanguageModel
+import torch
+max_seq_length = 2048 # Choose any! We auto support RoPE Scaling internally!
+dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
+load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
 
-Changes from the original vision‑aware version:
-  • Strips all image content — only text instructions are kept.
-  • Replaces `_extract_instruction_and_image` with `_extract_instruction`.
-  • `_to_chat` emits messages containing **text parts only**.
-  • Keeps the same easy‑to‑debug, no‑`main()`‑wrapper structure.
+# 4bit pre quantized models we support for 4x faster downloading + no OOMs.
+fourbit_models = [
+    #"unsloth/Meta-Llama-3.1-8B-bnb-4bit",      # Llama-3.1 2x faster
+    #"unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
+    #"unsloth/Llama-3.2-3B-bnb-4bit",
+    "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
 
-Defaults:
-  • Input  → ./temp/turn_evaluation_results_all.csv
-  • Output → ./sft_data_textonly.jsonl
-"""
-from __future__ import annotations
+]
+# … imports and FP16/4-bit flags …
 
-import argparse
-import ast
-import csv
-import json
-import logging
-from pathlib import Path
-from typing import Any, Dict, Generator, List
-
-###############################################################################
-# Logging setup
-###############################################################################
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
+    max_seq_length = 2048,
+    dtype = None,
+    load_in_4bit = True,
 )
-LOG = logging.getLogger("postprocess_sft_labeling_textonly")
 
-###############################################################################
-# Helpers
-###############################################################################
+model = FastLanguageModel.get_peft_model(
+    model, r=16,
+    target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
+    lora_alpha=16, lora_dropout=0, bias="none",
+    use_gradient_checkpointing="unsloth", random_state=3407,
+)
 
-def _iter_csv(path: Path) -> Generator[Dict[str, Any], None, None]:
-    with path.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            yield row
+from unsloth.chat_templates import get_chat_template
+tokenizer = get_chat_template(tokenizer, chat_template="llama-3.2")
 
+# --------------  LOAD + CONVERT DATA  --------------
+raw = load_dataset("json", data_files="sft_data_textonly.jsonl", split="train")
 
-def _safe_json_parse(raw: str) -> Any:
-    """Parse JSON or single‑quoted pseudo JSON. Unwrap double‑encoded strings."""
-    if not raw:
-        raise ValueError("Empty field")
-    # If the entire cell is quoted again ("…") try a de‑quote first
-    if raw.startswith("\"") and raw.endswith("\""):
-        try:
-            raw = json.loads(raw)  # remove one level
-        except Exception:
-            pass
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return ast.literal_eval(raw)
+def strip_images_and_flatten(example):
+    conv = []
+    for msg in example["messages"]:
+        texts = [c["text"] for c in msg["content"] if c["type"]=="text"]
+        if texts:
+            conv.append({"role": msg["role"], "content": "\n".join(texts).strip()})
+    return {"conversations": conv}
 
+ds = raw.map(strip_images_and_flatten, remove_columns=["messages"])
 
-def _norm_content(items: List[Any]) -> List[Dict[str, Any]]:
-    canon: List[Dict[str, Any]] = []
-    for itm in items:
-        if isinstance(itm, dict):
-            canon.append(itm)
-        elif isinstance(itm, str):
-            canon.append({"type": "text", "text": itm})
-        else:
-            canon.append({"type": "text", "text": str(itm)})
-    return canon
+def to_chat_template(examples):
+    return {"text": [
+        tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=False)
+        for conv in examples["conversations"]
+    ]}
 
+ds = ds.map(to_chat_template, batched=True)
+assert all(len(x) > 0 for x in ds["text"])
 
-def _normalize_messages(obj: Any) -> List[Dict[str, Any]]:
-    """Return canonical list[dict] for *messages*.
+# --------------  TRAIN  --------------
+trainer = SFTTrainer(
+    model              = model,
+    tokenizer          = tokenizer,
+    train_dataset      = ds,
+    dataset_text_field = "text",
+    max_seq_length     = 2048,
+    data_collator      = DataCollatorForSeq2Seq(tokenizer),
+    packing            = False,
+    args = TrainingArguments(
+        per_device_train_batch_size=2, gradient_accumulation_steps=4,
+        max_steps=60, learning_rate=2e-4, fp16=True,
+        output_dir="outputs", seed=3407, logging_steps=1, report_to="none",
+    ),
+)
 
-    Handles:
-      • list / dict / str at top level
-      • dicts whose *content* may be list **or** str
-    """
-    if obj is None:
-        return []
+from unsloth.chat_templates import train_on_responses_only
+trainer = train_on_responses_only(
+    trainer,
+    instruction_part="<|start_header_id|>user<|end_header_id|>\n\n",
+    response_part   ="<|start_header_id|>assistant<|end_header_id|>\n\n",
+)
 
-    # Case A: already a list of message objects / primitives
-    if isinstance(obj, list):
-        canon: List[Dict[str, Any]] = []
-        for itm in obj:
-            if isinstance(itm, dict):
-                content = itm.get("content")
-                if isinstance(content, list):
-                    itm["content"] = _norm_content(content)
-                elif isinstance(content, str):
-                    itm["content"] = _norm_content([content])
-                canon.append(itm)
-            else:  # primitive – wrap as user message
-                canon.append({"role": "user", "content": _norm_content([itm])})
-        return canon
-
-    # Case B: single dict
-    if isinstance(obj, dict):
-        content = obj.get("content")
-        if isinstance(content, list):
-            obj["content"] = _norm_content(content)
-        elif isinstance(content, str):
-            obj["content"] = _norm_content([content])
-        return [obj]
-
-    # Case C: primitive
-    if isinstance(obj, str):
-        return [{"role": "user", "content": _norm_content([obj])}]
-
-    raise TypeError(f"Unsupported messages type: {type(obj)}")
-
-
-def _extract_instruction(rec: Dict[str, Any]) -> str:
-    """Extract the *text instruction* from `rec`, ignoring any images."""
-    raw = rec.get("messages", "")
-    try:
-        msgs = _normalize_messages(_safe_json_parse(raw))
-    except Exception:
-        msgs = []
-
-    instruction: str | None = None
-
-    for msg in msgs:
-        if msg.get("role") != "user":
-            continue
-        for part in msg.get("content", []):
-            if isinstance(part, dict) and part.get("type") == "text" and not instruction:
-                instruction = str(part.get("text", "")).strip()
-            elif isinstance(part, str) and not instruction:
-                instruction = part.strip()
-        if instruction:
-            break
-
-    # Fallbacks
-    if not instruction:
-        instruction = str(rec.get("query", "")).strip()
-    if not instruction:
-        raise ValueError("No instruction text located.")
-
-    return instruction
-
-
-def _make_answer(rec: Dict[str, Any]) -> str:
-    return (
-        str(rec.get("ground_truth", ""))
-        if str(rec.get("is_correct")).lower() in {"true", "1", "yes"}
-        else "I don't know."
-    )
-
-
-def _to_chat(rec: Dict[str, Any]) -> List[Dict[str, Any]]:
-    instruction = _extract_instruction(rec)
-    answer = _make_answer(rec)
-    return [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": instruction},
-            ],
-        },
-        {
-            "role": "assistant",
-            "content": [
-                {"type": "text", "text": answer},
-            ],
-        },
-    ]
-
-###############################################################################
-# Top‑level script (no extra main() wrapper) – easy to set breakpoints here
-###############################################################################
-DEFAULT_IN = "./turn_evaluation_results_all.csv"
-DEFAULT_OUT = "./sft_data_textonly.jsonl"
-
-parser = argparse.ArgumentParser(description="CRAG → SFT chat converter (text‑only, debug‑friendly)")
-parser.add_argument("--input", default=DEFAULT_IN, help="CSV with evaluation flags & messages")
-parser.add_argument("--output", default=DEFAULT_OUT, help="Output JSONL file")
-args = parser.parse_args()
-
-INPUT_PATH = Path(args.input).expanduser()
-OUTPUT_PATH = Path(args.output).expanduser()
-
-LOG.info("🔍 Reading   %s", INPUT_PATH)
-LOG.info("💾 Writing → %s", OUTPUT_PATH)
-
-total = ok = skipped = 0
-
-with OUTPUT_PATH.open("w", encoding="utf-8") as fout:
-    for rec in _iter_csv(INPUT_PATH):
-        total += 1
-        try:
-            chat = _to_chat(rec)  # ← set a breakpoint here to inspect per‑row
-
-            fout.write(json.dumps({"messages": chat}, ensure_ascii=False) + "\n")
-            ok += 1
-        except Exception as exc:
-            LOG.error("🚫  Skipping row %d: %s", total, exc)
-            skipped += 1
-
-LOG.info("✅ Finished. kept=%d | skipped=%d | total=%d", ok, skipped, total)
+trainer_stats = trainer.train()
+print(trainer_stats)
