@@ -54,7 +54,7 @@ def normalize_answer(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    uncertain_phrases = ["don't know", "don't", "do not", "not sure", "unable", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I Don't Know"
@@ -234,6 +234,7 @@ class SimpleRAGAgent(BaseAgent):
         #summaries = [output.outputs[0].text.strip() for output in outputs]
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
+
 
         # inputs = []
         # messages_batch = []
@@ -529,10 +530,10 @@ class SimpleRAGAgent(BaseAgent):
             rag_inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.01,
-                top_p=0.9,
+                top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
-                seed=3407,#3407, 42
+                seed=42,#3407, 42
                 n=1,
             )
         )
@@ -540,7 +541,6 @@ class SimpleRAGAgent(BaseAgent):
         generated_texts = [output.outputs[0].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
-        # Step 5: Merge skipped + generated back in original order
         predictions = [""] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
@@ -550,6 +550,8 @@ class SimpleRAGAgent(BaseAgent):
 
         predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
+
+        # Step 5: Merge skipped + generated back in original order
 
         if True:
             rows = []
