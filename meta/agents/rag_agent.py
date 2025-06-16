@@ -539,9 +539,9 @@ class SimpleRAGAgent(BaseAgent):
         predictions = [""] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
-        # for idx, skip in enumerate(should_skip):
-        #     if skip:
-        #         predictions[idx] = "I don't know"
+        for idx, skip in enumerate(should_skip):
+            if skip:
+                predictions[idx] = "i don't know"
 
         #predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
