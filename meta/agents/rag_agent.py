@@ -192,7 +192,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}.If you are not sure, please respond 'I don't know' directly."""
         #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
@@ -326,11 +326,13 @@ class SimpleRAGAgent(BaseAgent):
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
             for i, result in enumerate(results):
-                #result = WebSearchResult(result)
 
-                snippet = result.get('page_snippet', '')
-                print(result)
-                rag_context.append(str(snippet))
+                result1 = WebSearchResult(result)
+                snippet = result1.get('page_content', '')
+                print(result1)
+                
+                if snippet:
+                    rag_context.append(str(snippet))
 
             # # Add retrieved context if available
             # rag_context = ""
@@ -527,15 +529,15 @@ class SimpleRAGAgent(BaseAgent):
             rag_inputs,
             sampling_params=vllm.SamplingParams(
                 temperature=0.01,
-                top_p=0.85,
+                top_p=0.9,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
                 seed=3407,#3407, 42
-                n=2,
+                n=1,
             )
         )
 
-        generated_texts = [output.outputs[1].text for output in generated_outputs]
+        generated_texts = [output.outputs[0].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
         # Step 5: Merge skipped + generated back in original order
