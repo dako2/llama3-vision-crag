@@ -373,7 +373,7 @@ class SimpleRAGAgent(BaseAgent):
             #             rag_context += f"[Info {i+1}] {snippet}\n\n"
 
             t0 = time.time()
-            new_results = fast_rr.batch_rerank(rag_context, q, k=8, min_score=-0.2)
+            new_results = fast_rr.batch_rerank(rag_context, q, k=5, min_score=0)
             print(new_results)
             
             flat_sentences = [s for group in new_results for (s, _) in group]
@@ -394,12 +394,12 @@ class SimpleRAGAgent(BaseAgent):
             #SYSTEM_PROMPT = """You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."""
             #user_prompt = """Context information is below. {context_str} Given the context information and using your prior knowledge, please provide your answer in concise style. End your answer with a period. Answer the question in one line only. Question: {query_str} Answer: """
             user_prompt = (
-                "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
                 #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
                 #"Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
-                "The image {caption}\n"
                 "Some reference might be useful: {context_str}\n"
+                "The image {caption}\n"
                 "Based on the above information, answer my question: {query_str}\n"
+                "You are in the final factual Q&A competition. Please respond concisely in one sentence. If you don't know the answer, respond with 'I don't know'."
                 #"if you are not sure, please answer 'i don't know' directly."
             )
 
