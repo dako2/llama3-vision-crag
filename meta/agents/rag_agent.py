@@ -547,7 +547,7 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 predictions[idx] = "I don't know"
 
-        #predictions = [normalize_answer(p) for p in predictions]
+        predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
         # rows = []
