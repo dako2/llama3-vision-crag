@@ -373,7 +373,7 @@ class SimpleRAGAgent(BaseAgent):
             #             rag_context += f"[Info {i+1}] {snippet}\n\n"
 
             t0 = time.time()
-            new_results = fast_rr.batch_rerank(rag_context, q, k=5, min_score=0)
+            new_results = fast_rr.batch_rerank(rag_context, q, k=8, min_score=-0.2)
             print(new_results)
             
             flat_sentences = [s for group in new_results for (s, _) in group]
