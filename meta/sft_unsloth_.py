@@ -65,32 +65,47 @@ IMAGE_MAP = {row["session_id"]: row["image"] for row in crag_ds}
 def _resize(img: Image.Image) -> Image.Image:
     return img.resize(TARGET_SIZE, Image.LANCZOS) if img.size != TARGET_SIZE else img
 
+
 def _inject_real_image(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Replace every image placeholder (session-id string) with the real PIL image.
-    If *any* placeholder cannot be filled, we drop the whole conversation.
+    Enforce canonical Llama-3.2 format:
+
+        [{"type":"text",  "text": ...},       # ← no 'image' key
+         {"type":"image", "image": PIL.Image}]
+
+    Return None to discard conversations that don’t match or miss their image.
     """
     try:
-        sid = rec.get("session_id")                       # keep for fast look-up
-        success = True
+        sid = rec.get("session_id")
 
-        for msg in rec["messages"]:
-            for part in msg["content"]:
-                if part.get("type") == "image":
-                    img_key = part["image"] or sid        # older files use sid
-                    img = IMAGE_MAP.get(img_key)
-                    if img is None:
-                        success = False                   # missing picture
-                        break
-                    part["image"] = _resize(img)
+        # 1️⃣  locate first user turn
+        user_msg = next((m for m in rec["messages"] if m["role"] == "user"), None)
+        if user_msg is None or len(user_msg["content"]) != 2:
+            return None
 
-            if not success:
-                break
+        text_part, img_part = user_msg["content"]
 
-        return rec if success else None                   # drop if any gap
+        # ── text block must be type=text ──────────────────────────────────────
+        if text_part.get("type") != "text":
+            return None
+        text_part.pop("image", None)          # ⬅ remove stray key if present
+
+        # ── image block must be type=image ───────────────────────────────────
+        if img_part.get("type") != "image":
+            return None
+
+        img_key = img_part.get("image") or sid
+        img = IMAGE_MAP.get(img_key)
+        if img is None:
+            return None                       # picture missing → drop row
+
+        img_part["image"] = _resize(img)      # ✅ swap in real PIL image
+        return rec
+
     except Exception as e:
-        print(f"[ERROR] {rec.get('session_id')} – {e}")
+        print(f"[ERROR] {sid} – {e}")
         return None
+
 
 
 def load_or_build_dataset() -> List[Dict[str, Any]]:
@@ -115,6 +130,13 @@ def load_or_build_dataset() -> List[Dict[str, Any]]:
     return processed
 
 train_conv = load_or_build_dataset()
+assert all(
+    m["content"][0]["type"] == "text"  and "image" not in m["content"][0]
+    and
+    m["content"][1]["type"] == "image" and isinstance(m["content"][1]["image"], Image.Image)
+    for row in train_conv
+    for m in row["messages"] if m["role"] == "user"
+)
 print("Total conversations:", len(train_conv))
 
 # ----------------------------------------------------------------
