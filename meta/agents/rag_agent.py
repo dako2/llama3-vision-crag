@@ -192,7 +192,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}."""
         #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
@@ -231,6 +231,7 @@ class SimpleRAGAgent(BaseAgent):
         )
         
         # Extract and clean summaries
+        #summaries = [output.outputs[0].text.strip() for output in outputs]
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
 
@@ -548,27 +549,28 @@ class SimpleRAGAgent(BaseAgent):
         predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
-        rows = []
-        for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
-            rows.append({"session_id": sid, "turn_idx": 0, 
-            "query": q,
-            "ground_truth": gt[0],
-            "prediction": pred,
-            "caption": caption,
-            "messages": mes,
-            },)
+        if True:
+            rows = []
+            for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
+                rows.append({"session_id": sid, "turn_idx": 0, 
+                "query": q,
+                "ground_truth": gt[0],
+                "prediction": pred,
+                "caption": caption,
+                "messages": mes,
+                },)
 
-        # after predictions
-        df = pd.DataFrame(rows)
-        df = ev.evaluate_dataframe(df)           # flags
-        #df = ev.add_finetune_answer(df)          # finetune_answer col
-        
-        scores = ev.calculate_scores(df)
-        print("Accuracy:", scores["accuracy"])
-        ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
+            # after predictions
+            df = pd.DataFrame(rows)
+            df = ev.evaluate_dataframe(df)           # flags
+            #df = ev.add_finetune_answer(df)          # finetune_answer col
+            
+            scores = ev.calculate_scores(df)
+            print("Accuracy:", scores["accuracy"])
+            ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
-        final_output = []
-        for p, c in zip(predictions, image_summaries):
-            final_output.append(f"{c} | {p}")
+            # final_output = []
+            # for p, c in zip(predictions, image_summaries):
+            #     final_output.append(f"{c} | {p}")
 
         return predictions, full_messages_batch, image_summaries, caption_messages_batch
