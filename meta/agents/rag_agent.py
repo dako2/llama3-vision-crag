@@ -64,6 +64,19 @@ def normalize_answer(text: str) -> str:
 
     return text
 
+
+def normalize_answer_idk(text: str) -> str:
+    """
+    Collapse any answer that indicates uncertainty into
+    the canonical string "i don't know".
+    """
+    text_lower = text.lower()
+    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+
+    if any(phrase in text_lower for phrase in uncertain_phrases):
+        return "I DON't KNOW"
+    return text
+
 class SimpleRAGAgent(BaseAgent):
     """
     SimpleRAGAgent demonstrates all the basic components you will need to create your 
@@ -547,7 +560,7 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 predictions[idx] = "I don't know"
 
-        predictions = [normalize_answer(p) for p in predictions]
+        predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
         # rows = []
