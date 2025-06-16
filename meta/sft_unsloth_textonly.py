@@ -1,6 +1,18 @@
 from unsloth import FastLanguageModel
 import torch
 from datasets import load_dataset
+from trl import SFTTrainer
+from transformers import TrainingArguments, DataCollatorForSeq2Seq
+from unsloth import is_bfloat16_supported
+from unsloth.chat_templates import get_chat_template
+from unsloth.chat_templates import train_on_responses_only
+from unsloth.chat_templates import standardize_sharegpt
+import wandb
+
+# 0) W&B login
+wandb.login()
+wandb.init()
+
 
 max_seq_length = 2048 # Choose any! We auto support RoPE Scaling internally!
 dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
@@ -12,7 +24,6 @@ fourbit_models = [
     #"unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
     #"unsloth/Llama-3.2-3B-bnb-4bit",
     "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
-
 ]
 # … imports and FP16/4-bit flags …
 
@@ -65,18 +76,31 @@ trainer = SFTTrainer(
     data_collator      = DataCollatorForSeq2Seq(tokenizer),
     packing            = False,
     args = TrainingArguments(
-        per_device_train_batch_size=2, gradient_accumulation_steps=4,
-        max_steps=60, learning_rate=2e-4, fp16=True,
-        output_dir="outputs", seed=3407, logging_steps=1, report_to="none",
+        per_device_train_batch_size = 16,
+        gradient_accumulation_steps = 4,
+        max_steps     = 60,
+        learning_rate = 1e-4,   # (or 2e-4 if you wish)
+        bf16          = True,   # ✅ turn *on* bfloat-16
+        fp16          = False,  # ❌ turn *off* fp16
+        output_dir    = "outputs",
+        seed          = 3407,
+        logging_steps = 1,
+        report_to="wandb", 
     ),
 )
 
-from unsloth.chat_templates import train_on_responses_only
-trainer = train_on_responses_only(
-    trainer,
-    instruction_part="<|start_header_id|>user<|end_header_id|>\n\n",
-    response_part   ="<|start_header_id|>assistant<|end_header_id|>\n\n",
-)
 
+# from unsloth.chat_templates import train_on_responses_only
+# trainer = train_on_responses_only(
+#     trainer,
+#     instruction_part="<|start_header_id|>user<|end_header_id|>\n\n",
+#     response_part   ="<|start_header_id|>assistant<|end_header_id|>\n\n",
+# )
+
+wandb.watch(model, log="all", log_freq=50)
 trainer_stats = trainer.train()
 print(trainer_stats)
+
+model.save_pretrained("Llama-3.2-3B-Instruct-bnb-4bit-idk")
+tokenizer.save_pretrained("Llama-3.2-3B-Instruct-bnb-4bit-idk")
+

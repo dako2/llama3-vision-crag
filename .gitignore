@@ -6,3 +6,6 @@ results/*.pkl
 */.env
 /meta-comprehensive-rag-benchmark-starter-kit/temp/
 /meta-comprehensive-rag-benchmark-starter-kit/docs/
+./meta/outputs/
+*.safetensors
+*.bin
