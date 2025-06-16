@@ -46,7 +46,7 @@ MAX_NUM_SEQS = 2
 MAX_GENERATION_TOKENS = 75
 
 # Number of search results to retrieve
-NUM_SEARCH_RESULTS = 5
+NUM_SEARCH_RESULTS = 10
 
 def normalize_answer(text: str) -> str:
     """
