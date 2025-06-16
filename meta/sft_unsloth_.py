@@ -68,17 +68,17 @@ def _resize(img: Image.Image) -> Image.Image:
 
 def _inject_real_image(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Enforce canonical Llama-3.2 format:
-
-        [{"type":"text",  "text": ...},       # ← no 'image' key
-         {"type":"image", "image": PIL.Image}]
-
-    Return None to discard conversations that don’t match or miss their image.
+    1. Verify the first user turn has *exactly* 2 items: [text, image-placeholder]
+    2. Swap the placeholder string with the real PIL image.
+    3. Remove any keys whose value is None:
+         • from the text part  → drop `"image"` if it’s null
+         • from the image part → drop `"text"` (or any other null key)
+    4. If the picture is missing, drop the entire conversation.
     """
     try:
         sid = rec.get("session_id")
 
-        # 1️⃣  locate first user turn
+        # ── locate first user message ─────────────────────────────────────────
         user_msg = next((m for m in rec["messages"] if m["role"] == "user"), None)
         if user_msg is None or len(user_msg["content"]) != 2:
             return None
@@ -88,23 +88,27 @@ def _inject_real_image(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         # ── text block must be type=text ──────────────────────────────────────
         if text_part.get("type") != "text":
             return None
-        text_part.pop("image", None)          # ⬅ remove stray key if present
+        text_part.pop("image", None)                    # ← drop stray key
 
-        # ── image block must be type=image ───────────────────────────────────
+        # ── image block must be type=image ────────────────────────────────────
         if img_part.get("type") != "image":
             return None
 
-        img_key = img_part.get("image") or sid
+        img_key = img_part.get("image") or sid          # placeholder string
         img = IMAGE_MAP.get(img_key)
         if img is None:
-            return None                       # picture missing → drop row
+            return None                                 # picture missing → skip
 
-        img_part["image"] = _resize(img)      # ✅ swap in real PIL image
+        img_part["image"] = _resize(img)                # ✅ real PIL image
+        img_part.pop("text", None)                      # ← drop `"text": None`
+        # (If other spurious keys appear, pop them the same way.)
+
         return rec
 
     except Exception as e:
         print(f"[ERROR] {sid} – {e}")
         return None
+
 
 
 
