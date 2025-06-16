@@ -54,7 +54,7 @@ def normalize_answer(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "do not", "not sure", "unable", "not able to"]
+    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I Don't Know"
@@ -192,7 +192,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}.If you are not sure, please respond 'I don't know' directly."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
         #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
@@ -231,10 +231,8 @@ class SimpleRAGAgent(BaseAgent):
         )
         
         # Extract and clean summaries
-        #summaries = [output.outputs[0].text.strip() for output in outputs]
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-
 
         # inputs = []
         # messages_batch = []
@@ -327,13 +325,11 @@ class SimpleRAGAgent(BaseAgent):
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
             for i, result in enumerate(results):
-                #result1 = WebSearchResult(result)
-                #snippet = result1.get('page_content', '')
+                #result = WebSearchResult(result)
+
                 snippet = result.get('page_snippet', '')
-                print(snippet)
-                
-                if snippet:
-                    rag_context.append(str(snippet))
+                print(result)
+                rag_context.append(str(snippet))
 
             # # Add retrieved context if available
             # rag_context = ""
@@ -384,8 +380,8 @@ class SimpleRAGAgent(BaseAgent):
                 "You are in factual Q&A competition. Please respond concisely and truthfully in 65 words or less. If you don't know the answer, respond with 'I don't know'."
                 #"You are a factual and knowledgable Q&A expert that answer the question about something truthfully in one line. "
                 #"Use context to support your answer explicitly. If insufficient information is available, say so.\n\n"
-                "##Some Reference: {context_str}\n"
-                "##The image caption: {caption}\n\n"
+                "The image {caption}\n"
+                "Some reference might be useful: {context_str}\n"
                 "Based on the above information, answer my question: {query_str}\n"
                 #"if you are not sure, please answer 'i don't know' directly."
             )
@@ -533,14 +529,13 @@ class SimpleRAGAgent(BaseAgent):
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
-                seed=42,#3407, 42
-                n=1,
+                seed=42
             )
         )
-
         generated_texts = [output.outputs[0].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
+        # Step 5: Merge skipped + generated back in original order
         predictions = [""] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
@@ -551,30 +546,30 @@ class SimpleRAGAgent(BaseAgent):
         predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
-        # Step 5: Merge skipped + generated back in original order
+        # rows = []
+        # for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
+        #     rows.append({"session_id": sid, "turn_idx": 0, 
+        #     "query": q,
+        #     "ground_truth": gt[0],
+        #     "prediction": pred,
+        #     "caption": caption,
+        #     "messages": mes,
+        #     },)
 
-        if True:
-            rows = []
-            for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
-                rows.append({"session_id": sid, "turn_idx": 0, 
-                "query": q,
-                "ground_truth": gt[0],
-                "prediction": pred,
-                "caption": caption,
-                "messages": mes,
-                },)
+        # # after predictions
+        # df = pd.DataFrame(rows)
+        # df = ev.evaluate_dataframe(df)           # flags
+        
+        # df = ev.add_finetune_answer(df)          # finetune_answer col
+        
+        # scores = ev.calculate_scores(df)
 
-            # after predictions
-            df = pd.DataFrame(rows)
-            df = ev.evaluate_dataframe(df)           # flags
-            #df = ev.add_finetune_answer(df)          # finetune_answer col
-            
-            scores = ev.calculate_scores(df)
-            print("Accuracy:", scores["accuracy"])
-            ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
+        # print("Accuracy:", scores["accuracy"])
 
-            # final_output = []
-            # for p, c in zip(predictions, image_summaries):
-            #     final_output.append(f"{c} | {p}")
+        # ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
+
+        # final_output = []
+        # for p, c in zip(predictions, image_summaries):
+        #     final_output.append(f"{c} | {p}")
 
         return predictions, full_messages_batch, image_summaries, caption_messages_batch
