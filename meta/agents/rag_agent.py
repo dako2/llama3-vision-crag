@@ -55,9 +55,13 @@ def normalize_answer(text: str) -> str:
     """
     text_lower = text.lower()
     uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    certain_phrases = ["the object"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I Don't Know"
+    if any(phrase not in text_lower for phrase in certain_phrases):
+        return "I don'T Know"
+
     return text
 
 class SimpleRAGAgent(BaseAgent):
@@ -541,7 +545,7 @@ class SimpleRAGAgent(BaseAgent):
             predictions[idx] = text
         for idx, skip in enumerate(should_skip):
             if skip:
-                predictions[idx] = "i don't know"
+                predictions[idx] = "I don't know"
 
         #predictions = [normalize_answer(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
