@@ -531,11 +531,11 @@ class SimpleRAGAgent(BaseAgent):
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
                 seed=3407,#3407, 42
-                n=1,
+                n=2,
             )
         )
 
-        generated_texts = [output.outputs[0].text for output in generated_outputs]
+        generated_texts = [output.outputs[1].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
         # Step 5: Merge skipped + generated back in original order
