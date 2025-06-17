@@ -136,13 +136,13 @@ def collate_fn(examples):
     
 if True:
 
-    data_collator = UnslothVisionDataCollator(
-        model,
-        tokenizer,
-        train_on_responses_only = False,
-        instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-        response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
-    )
+    # data_collator = UnslothVisionDataCollator(
+    #     model,
+    #     tokenizer,
+    #     train_on_responses_only = False,
+    #     instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+    #     response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
+    # )
 
     FastVisionModel.for_training(model) # Enable for training!
 
