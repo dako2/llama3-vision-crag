@@ -154,7 +154,7 @@ class SimpleRAGAgent(BaseAgent):
             max_model_len=MAX_MODEL_LEN,
             max_num_seqs=MAX_NUM_SEQS,
             trust_remote_code=True,
-            dtype="bfloat16",
+            dtype="auto",
             enforce_eager=True,
             limit_mm_per_prompt={
                 "image": 1 
