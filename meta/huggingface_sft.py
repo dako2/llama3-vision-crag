@@ -106,28 +106,21 @@ ds = Dataset.from_dict({
     'user_text': df['user_text'].tolist(),
 })
 
-def custom_collator(examples):
+def custom_collator(ex):
     # Assumes each example is pre-tokenized by `process`
     # If not pre-tokenized, move tokenization here instead
     batch = processor(text=[
         f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{ex['user_text']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{ex['finetune_answer']}<|eot_id|>"
-        for ex in examples
     ], return_tensors="pt", padding=True, truncation=True)
 
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100
     labels[labels == 128256] = -100  # Optional image token ID masking
     batch["labels"] = labels
-
-
-    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
-    for k in batch:
-        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
-            batch[k] = batch[k].to(torch.bfloat16)
-        batch[k] = batch[k].to("cuda")
-
     return batch
 
+ds = ds.map(tokenize_fn, batched=False, remove_columns=["user_text","finetune_answer"])
+ds.set_format("torch", columns=["input_ids","attention_mask","labels"])
 
 from transformers import TrainingArguments
 args=TrainingArguments(
