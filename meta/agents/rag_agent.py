@@ -135,7 +135,7 @@ class SimpleRAGAgent(BaseAgent):
             raise ValueError("Search pipeline is required for RAG agent")
             
         self.model_name = model_name
-        #self.model_name = "../model"
+        self.model_name = "../model"
         
         self.max_gen_len = max_gen_len
         self.timestamp = int(time.time())
@@ -181,13 +181,10 @@ class SimpleRAGAgent(BaseAgent):
                 # fallback – inline template for Llama-3.2 Vision
             self.tokenizer.chat_template = """{{ bos_token }}\
 {%- for message in messages %}\
-{{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' }}\
+{{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' + '<|image|>'}}\
 {%- for content in message['content'] %}\
 {%- if content['type'] == 'text' %}\
 {{ content['text'] }}\
-{%- elif content['type'] == 'image' %}\
-<|image|>\
-{%- endif %}\
 {%- endfor %}\
 <|eot_id|>\
 {%- endfor %}\
