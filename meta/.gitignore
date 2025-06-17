@@ -42,8 +42,8 @@ shared/
 !aicrowd.json
 *.log
 logs/
-*.pkl
 *.h5
+train_conv.pkl
 *.model
 *.weights
 *.pt

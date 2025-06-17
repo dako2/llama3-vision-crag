@@ -567,7 +567,6 @@ class SimpleRAGAgent(BaseAgent):
         #     if skip:
         #         predictions[idx] = "I don't know"
 
-
         predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
@@ -585,12 +584,9 @@ class SimpleRAGAgent(BaseAgent):
         # df = pd.DataFrame(rows)
         # df = ev.evaluate_dataframe(df)           # flags
         
-        # df = ev.add_finetune_answer(df)          # finetune_answer col
-        
+        # df = ev.add_finetune_answer(df)          # finetune_answer col        
         # scores = ev.calculate_scores(df)
-
         # print("Accuracy:", scores["accuracy"])
-
         # ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
         # final_output = []
