@@ -95,12 +95,20 @@ df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 # Step 3: Convert to HF Datase
 # Step 3: Convert to Hugging Face dataset
 
-ds = []
-for x, y in zip(df["finetune_answer"].tolist(), df["user_text"].tolist()):
-    ds.append({
-        "finetune_answer": x,
-        "user_text": y,
-    })
+# ds = []
+# for x, y in zip(df["finetune_answer"].tolist(), df["user_text"].tolist()):
+#     ds.append({
+#         "finetune_answer": x,
+#         "user_text": y,
+#     })
+
+from datasets import Dataset
+ds = Dataset.from_dict({
+    'finetune_answer': df['finetune_answer'].tolist(),
+    'user_text': df['user_text'].tolist(),
+})
+
+
 
 converted_dataset = [convert_to_conversation(sample) for sample in ds]
 
