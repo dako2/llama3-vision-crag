@@ -2,27 +2,20 @@ from unsloth import FastLanguageModel, FastVisionModel
 import torch
 from datasets import load_dataset, Dataset
 import pandas as pd
-
-from transformers import TrainingArguments, DataCollatorForSeq2Seq, AutoProcessor
-from unsloth import is_bfloat16_supported
-from unsloth.chat_templates import get_chat_template
-from unsloth.chat_templates import train_on_responses_only
-from unsloth.chat_templates import standardize_sharegpt
 import wandb
 
-from unsloth import is_bf16_supported
-from unsloth.trainer import UnslothVisionDataCollator
+from transformers import TrainingArguments, DataCollatorForSeq2Seq, AutoProcessor
+
 from trl import SFTTrainer, SFTConfig
 import ast 
-import json
- 
+from datasets import Dataset
+
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
         return ""
 
     parsed = ast.literal_eval(msg)
     return parsed[0]["content"][0]["text"]
- 
 
 def parse2(msg):
     if pd.isna(msg):
@@ -46,6 +39,7 @@ model, tokenizer = FastVisionModel.from_pretrained(
     load_in_4bit = load_in_4bit,
     use_gradient_checkpointing = "unsloth", # True or "unsloth" for long context
 )
+processor = AutoProcessor.from_pretrained("meta-llama/Llama-3.2-11B-Vision")
 
 model = FastVisionModel.get_peft_model(
     model,
@@ -64,26 +58,9 @@ model = FastVisionModel.get_peft_model(
     # target_modules = "all-linear", # Optional now! Can specify a list if needed
 )
 
-#instruction = "You are an expert radiographer. Describe accurately what you see in this image."
-instruction = ""
-def convert_to_conversation(sample):
-    conversation = [
-        { "role": "user",
-          "content" : [
-            {"type" : "text",  "text"  : sample["user_text"]},
-            #{"type" : "image", "image" : sample["image"]} 
-            ]
-        },
-        { "role" : "assistant",
-          "content" : [
-            {"type" : "text",  "text"  : sample["finetune_answer"]} ]
-        },
-    ]
-    return { "messages" : conversation }
-
-
+#load the dataset
+# Step 1: Load the dataset
 df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
-
 df["user_text"] = df["messages"].apply(safe_parse_and_extract)
 df.loc[df["user_text"] == "", "user_text"] = df["query"]
 # Step 2: Clean finetune_answer for specific API response
@@ -93,57 +70,11 @@ df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't
 df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
 # Step 3: Convert to HF Datase
-# Step 3: Convert to Hugging Face dataset
-
-# ds = []
-# for x, y in zip(df["finetune_answer"].tolist(), df["user_text"].tolist()):
-#     ds.append({
-#         "finetune_answer": x,
-#         "user_text": y,
-#     })
-
-from datasets import Dataset
 ds = Dataset.from_dict({
     'finetune_answer': df['finetune_answer'].tolist(),
     'user_text': df['user_text'].tolist(),
 })
 
-
-
-converted_dataset = [convert_to_conversation(sample) for sample in ds]
-
-print(converted_dataset[0])
-
-processor = AutoProcessor.from_pretrained("meta-llama/Llama-3.2-11B-Vision")
-
-# def collate_fn(examples):
-#     # Extract the messages in the correct format
-#     processed_examples = [example['messages'] for example in examples]
-    
-#     # Apply the chat template to each example
-#     texts = [processor.apply_chat_template(messages, tokenize=False) 
-#             for messages in processed_examples]
-
-#     # Tokenize the texts
-#     batch = processor(
-#         text=texts, 
-#         #images=None, 
-#         return_tensors="pt", 
-#         padding=True
-#     )
-
-#     # Create labels from the input_ids
-#     labels = batch["input_ids"].clone()
-#     labels[labels == processor.tokenizer.pad_token_id] = -100
-
-#     batch["labels"] = labels
-
-#     return batch
-
-
-# preprocessor, {"messages": "messages", "images": "images"} ==> string "<begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
-# Tokenize, string ==> input_ids, attention_mask, image_token_ids, image_attention_mask
-# batch ....
 
 def collate_fn(examples):
     texts = [
@@ -153,8 +84,6 @@ def collate_fn(examples):
     #print(texts)
     batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
     print(batch)
-
-
     # The labels are the input_ids, and we mask the padding tokens in the loss computation
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100  #
@@ -169,55 +98,50 @@ def collate_fn(examples):
 ds = ds.map(collate_fn, batched=True)
 ds = ds.remove_columns(["finetune_answer", "user_text"])
 
-if True:
+# data_collator = UnslothVisionDataCollator(
+#     model,
+#     processor.tokenizer,
+#     train_on_responses_only = True,
+#     instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+#     response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",        
+# )
 
-    # data_collator = UnslothVisionDataCollator(
-    #     model,
-    #     processor.tokenizer,
-    #     train_on_responses_only = True,
-    #     instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-    #     response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",        
-    # )
+FastVisionModel.for_training(model) # Enable for training!
 
-    FastVisionModel.for_training(model) # Enable for training!
+trainer = SFTTrainer(
+    model = model,
+    tokenizer = tokenizer,
 
-    trainer = SFTTrainer(
-        model = model,
-        tokenizer = tokenizer,
-
-
-        data_collator = DataCollatorForSeq2Seq(tokenizer=processor), # Must use!
-        train_dataset = ds,
-        
-        
-        
-        args = SFTConfig(
-            per_device_train_batch_size = 8,
-            gradient_accumulation_steps = 4,
-            warmup_steps = 5,
-            max_steps = 160,
-            num_train_epochs = 5, # Set this instead of max_steps for full training runs
-            learning_rate = 2e-4,
-            fp16 = False,
-            bf16 = True,
-            logging_steps = 10, 
-            optim = "adamw_torch",
-            weight_decay = 0.01,
-            lr_scheduler_type = "linear",
-            save_strategy="epoch",
-            save_total_limit=3,
-            seed = 3407,
-            output_dir = "outputs",
-            report_to = "none",     # For Weights and Biases
-
-            # You MUST put the below items for vision finetuning:
-            remove_unused_columns = False,
-            dataset_text_field = "",
-            dataset_kwargs = {"skip_prepare_dataset": True},
-            dataset_num_proc = 4,
-            max_seq_length = max_seq_length,
-        ),
-    )
+    data_collator = DataCollatorForSeq2Seq(tokenizer=processor), # Must use!
+    train_dataset = ds,
     
-    wandb.watch(model, log="all", log_freq=50)
-    trainer_stats = trainer.train()
+    args = SFTConfig(
+        per_device_train_batch_size = 8,
+        gradient_accumulation_steps = 4,
+        warmup_steps = 0,
+        max_steps = 10,
+        num_train_epochs = 1, # Set this instead of max_steps for full training runs
+        learning_rate = 1e-5,
+        fp16 = False,
+        bf16 = True,
+        logging_steps = 10, 
+        optim = "adamw_torch",
+        weight_decay = 0.01,
+        lr_scheduler_type = "linear",
+        save_strategy="epoch",
+        save_total_limit=3,
+        seed = 3407,
+        output_dir = "outputs",
+        report_to = "none",     # For Weights and Biases
+
+        # You MUST put the below items for vision finetuning:
+        remove_unused_columns = False,
+        dataset_text_field = "",
+        dataset_kwargs = {"skip_prepare_dataset": True},
+        dataset_num_proc = 4,
+        max_seq_length = max_seq_length,
+    ),
+)
+
+wandb.watch(model, log="all", log_freq=50)
+trainer_stats = trainer.train()
