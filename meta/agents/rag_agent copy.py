@@ -14,6 +14,10 @@ from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
 
+
+from agents.miao_router import MiaoRouter
+
+mr = MiaoRouter()
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
@@ -71,7 +75,7 @@ def normalize_answer_idk(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    uncertain_phrases = [":\n","however","but","don't know", "don't", "not sure", "unable", "not", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I DON't KNOW"
@@ -162,22 +166,22 @@ class SimpleRAGAgent(BaseAgent):
         )
         self.tokenizer = self.llm.get_tokenizer()
         
-        if self.tokenizer.chat_template is None:
-            tmpl_file = Path(self.model_name) / "chat_template.json"
-            if tmpl_file.exists():
-                self.tokenizer.chat_template = tmpl_file.read_text()
-                print("Chat template loaded from local file.")
-            else:
-                # fallback – inline template for Llama-3.2 Vision
-                self.tokenizer.chat_template = (
-                    "{% if messages[0]['role'] == 'system' %}"
-                    "{{ messages[0]['content'] }}{% endif %}"
-                    "{% for m in messages[1:] %}"
-                    "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
-                    "{% endfor %}"
-                    "{{ '<|im_start|>assistant\\n' }}"
-                )
-                print("Injected default chat template.")
+        # if self.tokenizer.chat_template is None:
+        #     tmpl_file = Path(self.model_name) / "chat_template.json"
+        #     if tmpl_file.exists():
+        #         self.tokenizer.chat_template = tmpl_file.read_text()
+        #         print("Chat template loaded from local file.")
+        #     else:
+        #         # fallback – inline template for Llama-3.2 Vision
+        #         self.tokenizer.chat_template = (
+        #             "{% if messages[0]['role'] == 'system' %}"
+        #             "{{ messages[0]['content'] }}{% endif %}"
+        #             "{% for m in messages[1:] %}"
+        #             "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
+        #             "{% endfor %}"
+        #             "{{ '<|im_start|>assistant\\n' }}"
+        #         )
+        #         print("Injected default chat template.")
 
         print("Models loaded successfully")
 
@@ -209,8 +213,8 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
-        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. """
+        #summarize_prompt = """If you are not sure, please respond 'I don't know' directly. Don't answer the question itself. Identity the specific name of the object that the user is asking in the image -- {query}."""
         
         inputs = []
         messages_batch = []
@@ -250,7 +254,9 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and clean summaries
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-
+        
+        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
+        
         # inputs = []
         # messages_batch = []
         # for query, caption, image in zip(queries, summaries, images):
@@ -334,19 +340,19 @@ class SimpleRAGAgent(BaseAgent):
                 search_results_batch.append("")
                 continue
 
-            print("searching:",query)
-
             q = f"{query} {summary}"
             #q = f"{search_summary}"
+            print("searching:",q)
 
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
             for i, result in enumerate(results):
                 #result = WebSearchResult(result)
 
-                snippet = result.get('page_snippet', '')
+                snippet = result.get('page_content', '')
                 print(result)
-                rag_context.append(str(snippet))
+                if snippet:
+                    rag_context.append(str(snippet))
 
             # # Add retrieved context if available
             # rag_context = ""
@@ -497,7 +503,10 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of generated responses, one per input query.
         """
         print(f"Processing batch of {len(queries)} queries with RAG")
-        
+
+        should_skip_by_difficulty_index = mr.route(queries)
+        #print("should_skip_by_difficulty_index:",should_skip_by_difficulty_index)
+
         images = resize_images(images)
 
         # Step 1: Batch summarize all images for search terms
@@ -520,6 +529,10 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 continue
 
+            if should_skip_by_difficulty_index:
+                if idx in should_skip_by_difficulty_index:
+                    continue
+
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
             )[0]  # unpack single result
@@ -534,6 +547,7 @@ class SimpleRAGAgent(BaseAgent):
                 "prompt": formatted_prompt,
                 # "multi_modal_data": {"image": image}
             })
+
             original_indices.append(idx)
             full_messages_batch[idx] = messages  # ✅ Save message to aligned batch
 
@@ -553,14 +567,15 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated {len(generated_texts)} responses")
 
         # Step 5: Merge skipped + generated back in original order
-        predictions = [""] * len(queries)
+        predictions = ["I don't know"] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
-        for idx, skip in enumerate(should_skip):
-            if skip:
-                predictions[idx] = "I don't know"
+            
+        # for idx, skip in enumerate(should_skip):
+        #     if skip:
+        #         predictions[idx] = "I don't know"
 
-        #predictions = [normalize_answer_idk(p) for p in predictions]
+        predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
         # rows = []
@@ -577,12 +592,9 @@ class SimpleRAGAgent(BaseAgent):
         # df = pd.DataFrame(rows)
         # df = ev.evaluate_dataframe(df)           # flags
         
-        # df = ev.add_finetune_answer(df)          # finetune_answer col
-        
+        # df = ev.add_finetune_answer(df)          # finetune_answer col        
         # scores = ev.calculate_scores(df)
-
         # print("Accuracy:", scores["accuracy"])
-
         # ev.save_dataframe_to_jsonl(df, "./data/finetune_data_%d.jsonl"%(self.timestamp), append=True)
 
         # final_output = []

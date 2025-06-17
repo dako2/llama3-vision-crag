@@ -491,7 +491,7 @@ def generate_features(df: pd.DataFrame) -> pd.DataFrame:
     for col in FEATURE_COLS:
         if col not in out.columns:
             out[col] = 0
-            
+
     return out
 
 
@@ -519,7 +519,7 @@ class MiaoRouter():
         X_out = out[self.feature_cols]
         
         out['y_pred'] = self.clf_loaded.predict_proba(X_out)[:, 1]
-        high_confidence_index = out[out["y_pred"] >= 0.61].index.to_list()
+        high_confidence_index = out[out["y_pred"] >= 0.7].index.to_list()
 
         return high_confidence_index
 
