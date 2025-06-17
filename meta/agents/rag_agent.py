@@ -185,6 +185,9 @@ class SimpleRAGAgent(BaseAgent):
 {%- for content in message['content'] %}\
 {%- if content['type'] == 'text' %}\
 {{ content['text'] }}\
+{%- elif content['type'] == 'image' %}\
+<|image|>\
+{%- endif %}\
 {%- endfor %}\
 <|eot_id|>\
 {%- endfor %}\
