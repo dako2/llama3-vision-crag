@@ -192,7 +192,7 @@ if True:
         
         
         args = SFTConfig(
-            per_device_train_batch_size = 2,
+            per_device_train_batch_size = 32,
             gradient_accumulation_steps = 4,
             warmup_steps = 5,
             max_steps = 90,
