@@ -154,15 +154,13 @@ class SimpleRAGAgent(BaseAgent):
             max_model_len=MAX_MODEL_LEN,
             max_num_seqs=MAX_NUM_SEQS,
             trust_remote_code=True,
-            dtype="bfloat16",
+            dtype="auto",
             enforce_eager=True,
             limit_mm_per_prompt={
                 "image": 1 
             } # In the CRAG-MM dataset, every conversation has at most 1 image
         )
         self.tokenizer = self.llm.get_tokenizer()
-
-
         
         # if self.tokenizer.chat_template is None:
         #     tmpl_file = Path(self.model_name) / "chat_template.json"
@@ -211,8 +209,8 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
-        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
+        #summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. """
+        summarize_prompt = """If you are not sure, please respond 'I don't know' directly. Don't answer the question itself. Identity the specific name of the object that the user is asking in the image -- {query}."""
         
         inputs = []
         messages_batch = []
@@ -252,7 +250,9 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and clean summaries
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-
+        
+        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
+        
         # inputs = []
         # messages_batch = []
         # for query, caption, image in zip(queries, summaries, images):
@@ -535,10 +535,6 @@ class SimpleRAGAgent(BaseAgent):
                 "prompt": formatted_prompt,
                 # "multi_modal_data": {"image": image}
             })
-
-            print("\n\n\n\n=============================qt to debug")
-            print(formatted_prompt)
-            print("\n\n\n\n=============================qt to debug")
 
             # rag_inputs.append(
             #     {  # Explicit prompt
