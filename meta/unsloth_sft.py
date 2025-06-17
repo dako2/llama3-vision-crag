@@ -3,7 +3,7 @@ import torch
 from datasets import load_dataset, Dataset
 import pandas as pd
 
-from transformers import TrainingArguments, DataCollatorForSeq2Seq
+from transformers import TrainingArguments, DataCollatorForSeq2Seq, AutoProcessor
 from unsloth import is_bfloat16_supported
 from unsloth.chat_templates import get_chat_template
 from unsloth.chat_templates import train_on_responses_only
@@ -13,26 +13,23 @@ import wandb
 from unsloth import is_bf16_supported
 from unsloth.trainer import UnslothVisionDataCollator
 from trl import SFTTrainer, SFTConfig
-
+import ast 
+import json
+ 
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
         return ""
-    try:
-        parsed = ast.literal_eval(msg)
-        return parsed[0]["content"][0]["text"]
-    except Exception as e:
-        return f"[PARSE_ERROR: {str(e)}]"
+
+    parsed = ast.literal_eval(msg)
+    return parsed[0]["content"][0]["text"]
+ 
 
 def parse2(msg):
     if pd.isna(msg):
         return ""
-    try:
-        parsed = ast.literal_eval(msg)
-        return parsed[0]
-    except Exception as e:
-        return f"[PARSE_ERROR: {str(e)}]"
 
-
+    parsed = ast.literal_eval(msg)
+    return parsed[0]
 
 # 0) W&B login
 wandb.login()
@@ -84,6 +81,7 @@ def convert_to_conversation(sample):
     ]
     return { "messages" : conversation }
 
+
 df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
 
 df["user_text"] = df["messages"].apply(safe_parse_and_extract)
@@ -91,71 +89,114 @@ df.loc[df["user_text"] == "", "user_text"] = df["query"]
 # Step 2: Clean finetune_answer for specific API response
 df["ground_truth"] = df["ground_truth"].apply(parse2)
 df["finetune_answer"] = df["ground_truth"]  # Ensure column exists
-df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't know. it's difficult to answer the question accurately."
+df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't know. there is not enough information to answer the question accurately."
 df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
-import json
+# Step 3: Convert to HF Datase
+# Step 3: Convert to Hugging Face dataset
 
-# Step 3: Convert to HF Dataset
-ds = Dataset.from_dict({
-    'finetune_answer': df['finetune_answer'].tolist(),
-    'user_text': df['user_text'].tolist(),
-})
+ds = []
+for x, y in zip(df["finetune_answer"].tolist(), df["user_text"].tolist()):
+    ds.append({
+        "finetune_answer": x,
+        "user_text": y,
+    })
 
-# Step 4: Format to chat messages as JSON string per sample
-converted_dataset = Dataset.from_list([
-    {"messages": json.dumps(convert_to_conversation(row))}
-    for _, row in df.iterrows()
-])
+converted_dataset = [convert_to_conversation(sample) for sample in ds]
 
 print(converted_dataset[0])
 
-def collate_fn(examples):
-    # Extract the messages in the correct format
-    processed_examples = [example['messages'] for example in examples]
+processor = AutoProcessor.from_pretrained("meta-llama/Llama-3.2-11B-Vision")
+
+# def collate_fn(examples):
+#     # Extract the messages in the correct format
+#     processed_examples = [example['messages'] for example in examples]
     
-    # Apply the chat template to each example
-    texts = [tokenizer.apply_chat_template(messages, tokenize=False) 
-            for messages in processed_examples]
+#     # Apply the chat template to each example
+#     texts = [processor.apply_chat_template(messages, tokenize=False) 
+#             for messages in processed_examples]
 
-    # Tokenize the texts
-    batch = tokenizer(
-        text=texts, 
-        images=None, 
-        return_tensors="pt", 
-        padding=True
-    )
+#     # Tokenize the texts
+#     batch = processor(
+#         text=texts, 
+#         #images=None, 
+#         return_tensors="pt", 
+#         padding=True
+#     )
 
-    # Create labels from the input_ids
+#     # Create labels from the input_ids
+#     labels = batch["input_ids"].clone()
+#     labels[labels == processor.tokenizer.pad_token_id] = -100
+
+#     batch["labels"] = labels
+
+#     return batch
+
+def collate_fn(examples):
+    texts = [
+        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
+        for user, answer in zip(examples["user_text"], examples["finetune_answer"])
+    ]
+    print(texts)
+    batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
     labels = batch["input_ids"].clone()
-    labels[labels == tokenizer.tokenizer.pad_token_id] = -100
-
+    labels[labels == processor.tokenizer.pad_token_id] = -100
+    labels[labels == 128256] = -100
     batch["labels"] = labels
 
+    # # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    # for k in batch:
+    #     if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+    #         batch[k] = batch[k].to(torch.bfloat16)
+    #     batch[k] = batch[k].to("cuda")
+
     return batch
-    
+
+# ds = ds.map(collate_fn, batched=True)
+unsloth_template = \
+    "{{ bos_token }}"\
+    "{% if messages[0]['role'] == 'system' %}"\
+        "{{ messages[0]['content'] + '\n' }}"\
+        "{% set loop_messages = messages[1:] %}"\
+    "{% else %}"\
+        "{{ '{system_message}' + '\n' }}"\
+        "{% set loop_messages = messages %}"\
+    "{% endif %}"\
+    "{% for message in loop_messages %}"\
+        "{% if message['role'] == 'user' %}"\
+            "{{ '>>> User: ' + message['content'] + '\n' }}"\
+        "{% elif message['role'] == 'assistant' %}"\
+            "{{ '>>> Assistant: ' + message['content'] + eos_token + '\n' }}"\
+        "{% else %}"\
+            "{{ raise_exception('Only user and assistant roles are supported!') }}"\
+        "{% endif %}"\
+    "{% endfor %}"\
+    "{% if add_generation_prompt %}"\
+        "{{ '>>> Assistant: ' }}"\
+    "{% endif %}"
+
 if True:
 
-    # data_collator = UnslothVisionDataCollator(
-    #     model,
-    #     tokenizer,
-    #     train_on_responses_only = False,
-    #     instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-    #     response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
-    # )
+    data_collator = UnslothVisionDataCollator(
+        model,
+        processor.tokenizer,
+        train_on_responses_only = True,
+        instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+        response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",        
+    )
 
     FastVisionModel.for_training(model) # Enable for training!
 
     trainer = SFTTrainer(
         model = model,
         tokenizer = tokenizer,
-        data_collator = collate_fn, # Must use!
+        data_collator = data_collator, # Must use!
         train_dataset = converted_dataset,
         args = SFTConfig(
             per_device_train_batch_size = 2,
             gradient_accumulation_steps = 4,
             warmup_steps = 5,
-            max_steps = 30,
+            max_steps = 90,
             # num_train_epochs = 1, # Set this instead of max_steps for full training runs
             learning_rate = 2e-4,
             fp16 = False,
