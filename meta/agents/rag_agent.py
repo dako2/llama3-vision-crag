@@ -42,7 +42,8 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
 #### Please ensure that when you submit, VLLM_TENSOR_PARALLEL_SIZE=1. 
 #os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 VLLM_TENSOR_PARALLEL_SIZE = 1
-VLLM_GPU_MEMORY_UTILIZATION = 0.5
+
+VLLM_GPU_MEMORY_UTILIZATION = 0.85
 
 # These are model specific parameters to get the model to run on a single NVIDIA L40s GPU
 MAX_MODEL_LEN = 8192
@@ -58,7 +59,8 @@ def normalize_answer(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    uncertain_phrases = [":\n","however","but","don't know", "not sure", "unable", "not", "not able to","appears","unfortunately", "i cannot", "i'm sorry", "i'm unable", "i don't", "not provided"]
+    
     certain_phrases = ["the object"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
@@ -75,8 +77,8 @@ def normalize_answer_idk(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = [":\n","however","but","don't know", "don't", "not sure", "unable", "not", "not able to"]
-
+    uncertain_phrases = [":\n","however","but","don't know", "not sure", "unable", "not", "not able to","appears","unfortunately", "i cannot", "i'm sorry", "i'm unable", "i don't", "not provided"]
+    
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I DON't KNOW"
     return text
@@ -558,7 +560,7 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.01,
+                temperature=0.1,
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
