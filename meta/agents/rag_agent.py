@@ -209,8 +209,8 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        #summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. """
-        summarize_prompt = """If you are not sure, please respond 'I don't know' directly. Don't answer the question itself. Identity the specific name of the object that the user is asking in the image -- {query}."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. """
+        #summarize_prompt = """If you are not sure, please respond 'I don't know' directly. Don't answer the question itself. Identity the specific name of the object that the user is asking in the image -- {query}."""
         
         inputs = []
         messages_batch = []
@@ -555,7 +555,7 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.01,
+                temperature=0.1,
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
