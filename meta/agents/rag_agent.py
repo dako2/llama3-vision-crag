@@ -134,8 +134,8 @@ class SimpleRAGAgent(BaseAgent):
         if search_pipeline is None:
             raise ValueError("Search pipeline is required for RAG agent")
             
-        #self.model_name = model_name
-        self.model_name = "../model"
+        self.model_name = model_name
+        #self.model_name = "../model"
         
         self.max_gen_len = max_gen_len
         self.timestamp = int(time.time())
@@ -233,8 +233,11 @@ class SimpleRAGAgent(BaseAgent):
         inputs = []
         messages_batch = []
         for query, image in zip(queries, images):
+            # messages = [
+            #     {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
+            # ]
             messages = [
-                {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
             ]
             
             # Format prompt using the tokenizer
@@ -243,8 +246,6 @@ class SimpleRAGAgent(BaseAgent):
                 add_generation_prompt=True,
                 tokenize=False
             )
-            print(formatted_prompt)
-
             
             inputs.append({
                 "prompt": formatted_prompt,
@@ -252,6 +253,9 @@ class SimpleRAGAgent(BaseAgent):
                     "image": image
                 }
             })
+
+            print(inputs)
+
             
             messages_batch.append(messages)
         
