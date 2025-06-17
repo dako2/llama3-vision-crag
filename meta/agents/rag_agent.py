@@ -42,7 +42,7 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
 #### Please ensure that when you submit, VLLM_TENSOR_PARALLEL_SIZE=1. 
 #os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 VLLM_TENSOR_PARALLEL_SIZE = 1
-VLLM_GPU_MEMORY_UTILIZATION = 0.85
+VLLM_GPU_MEMORY_UTILIZATION = 0.5
 
 # These are model specific parameters to get the model to run on a single NVIDIA L40s GPU
 MAX_MODEL_LEN = 8192
@@ -50,7 +50,7 @@ MAX_NUM_SEQS = 2
 MAX_GENERATION_TOKENS = 75
 
 # Number of search results to retrieve
-NUM_SEARCH_RESULTS = 10
+NUM_SEARCH_RESULTS = 5
 
 def normalize_answer(text: str) -> str:
     """
@@ -344,37 +344,41 @@ class SimpleRAGAgent(BaseAgent):
             #q = f"{search_summary}"
 
             rag_context = []
-            results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
-            for i, result in enumerate(results):
-                #result = WebSearchResult(result)
+            try:
+                results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
+                for i, result in enumerate(results):
+                    #result = WebSearchResult(result)
 
-                snippet = result.get('page_snippet', '')
-                print(result)
-                rag_context.append(str(snippet))
+                    snippet = result.get('page_snippet', '')
+                    print(result)
+                    rag_context.append(str(snippet))
 
-            # # Add retrieved context if available
-            # rag_context = ""
-            # if search_results:
-            #     #rag_context = "Here is some additional information that may help you answer:\n\n"
-            #     for i, result in enumerate(search_results):
-            #         # WebSearchResult is a helper class to get the full page content of a web search result.
-            #         #
-            #         # It first checks if the page content is already available in the cache. If not, it fetches  
-            #         # the full page content and caches it.
-            #         #
-            #         # WebSearchResult adds `page_content` attribute to the result dictionary where the page 
-            #         # content is stored. You can use it like a regular dictionary to fetch other attributes.
-            #         #
-            #         # result["page_content"] for complete page content, this is available only via WebSearchResult
-            #         # result["page_url"] for page URL
-            #         # result["page_name"] for page title
-            #         # result["page_snippet"] for page snippet
-            #         # result["score"] relavancy with the search query
-            #         #print(result["page_content"])
-            #         result = WebSearchResult(result)
-            #         snippet = result.get('page_snippet', '')
-            #         if snippet:
-            #             rag_context += f"[Info {i+1}] {snippet}\n\n"
+                # # Add retrieved context if available
+                # rag_context = ""
+                # if search_results:
+                #     #rag_context = "Here is some additional information that may help you answer:\n\n"
+                #     for i, result in enumerate(search_results):
+                #         # WebSearchResult is a helper class to get the full page content of a web search result.
+                #         #
+                #         # It first checks if the page content is already available in the cache. If not, it fetches  
+                #         # the full page content and caches it.
+                #         #
+                #         # WebSearchResult adds `page_content` attribute to the result dictionary where the page 
+                #         # content is stored. You can use it like a regular dictionary to fetch other attributes.
+                #         #
+                #         # result["page_content"] for complete page content, this is available only via WebSearchResult
+                #         # result["page_url"] for page URL
+                #         # result["page_name"] for page title
+                #         # result["page_snippet"] for page snippet
+                #         # result["score"] relavancy with the search query
+                #         #print(result["page_content"])
+                #         result = WebSearchResult(result)
+                #         snippet = result.get('page_snippet', '')
+                #         if snippet:
+                #             rag_context += f"[Info {i+1}] {snippet}\n\n"
+            except:
+                print("searching pipeline error")
+                pass
 
             t0 = time.time()
             new_results = fast_rr.batch_rerank(rag_context, q, k=5, min_score=0)
@@ -467,8 +471,8 @@ class SimpleRAGAgent(BaseAgent):
         queries: List[str],
         images: List[Image.Image],
         message_histories: List[List[Dict[str, Any]]],
-        session_ids: List[str],
-        ground_truths: List[List[str]],
+        # session_ids: List[str],
+        # ground_truths: List[List[str]],
     ) -> List[str]:
         """
         Generate RAG-enhanced responses for a batch of queries with associated images.
@@ -609,4 +613,4 @@ class SimpleRAGAgent(BaseAgent):
         # for p, c in zip(predictions, image_summaries):
         #     final_output.append(f"{c} | {p}")
 
-        return predictions, full_messages_batch, image_summaries, caption_messages_batch
+        return predictions #, full_messages_batch, image_summaries, caption_messages_batch
