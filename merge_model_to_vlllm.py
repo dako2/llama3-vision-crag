@@ -15,7 +15,7 @@ model, tokenizer = FastVisionModel.from_pretrained(
     model_name = "meta/outputs/checkpoint-90",
     max_seq_length = 8192,
     #dtype = dtype,
-    load_in_4bit = True, # still 4-bits as trained model
+    load_in_4bit = False, # still 4-bits as trained model
 )
 
 # Saving & Pushing
