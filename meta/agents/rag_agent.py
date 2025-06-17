@@ -14,6 +14,10 @@ from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
 
+
+from agents.miao_router import MiaoRouter
+mr = MiaoRouter()
+
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
@@ -38,7 +42,7 @@ def resize_images(images: List[Image.Image], target_width: int = TARGET_WIDTH, t
 #### Please ensure that when you submit, VLLM_TENSOR_PARALLEL_SIZE=1. 
 #os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 VLLM_TENSOR_PARALLEL_SIZE = 1
-VLLM_GPU_MEMORY_UTILIZATION = 0.95 
+VLLM_GPU_MEMORY_UTILIZATION = 0.85
 
 # These are model specific parameters to get the model to run on a single NVIDIA L40s GPU
 MAX_MODEL_LEN = 8192
@@ -71,7 +75,7 @@ def normalize_answer_idk(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    uncertain_phrases = [":\n","however","but","don't know", "don't", "not sure", "unable", "not", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I DON't KNOW"
@@ -154,7 +158,7 @@ class SimpleRAGAgent(BaseAgent):
             max_model_len=MAX_MODEL_LEN,
             max_num_seqs=MAX_NUM_SEQS,
             trust_remote_code=True,
-            dtype="bfloat16",
+            dtype="float16",
             enforce_eager=True,
             limit_mm_per_prompt={
                 "image": 1 
@@ -496,6 +500,10 @@ class SimpleRAGAgent(BaseAgent):
         Returns:
             List[str]: List of generated responses, one per input query.
         """
+
+        should_skip_by_difficulty_index = mr.route(queries)
+        #print("should_skip_by_difficulty_index:",should_skip_by_difficulty_index)
+
         print(f"Processing batch of {len(queries)} queries with RAG")
         
         images = resize_images(images)
@@ -519,6 +527,10 @@ class SimpleRAGAgent(BaseAgent):
         )):
             if skip:
                 continue
+
+            if should_skip_by_difficulty_index:
+                if idx in should_skip_by_difficulty_index:
+                    continue
 
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
@@ -552,14 +564,22 @@ class SimpleRAGAgent(BaseAgent):
         generated_texts = [output.outputs[0].text for output in generated_outputs]
         print(f"Successfully generated {len(generated_texts)} responses")
 
+        # # Step 5: Merge skipped + generated back in original order
+        # predictions = [""] * len(queries)
+        # for idx, text in zip(original_indices, generated_texts):
+        #     predictions[idx] = text
+        # for idx, skip in enumerate(should_skip):
+        #     if skip:
+        #         predictions[idx] = "I don't know"
+
+        # predictions = [normalize_answer_idk(p) for p in predictions]
+        # print(f"Successfully generated responses: {predictions} ")
+
         # Step 5: Merge skipped + generated back in original order
-        predictions = [""] * len(queries)
+        predictions = ["I don't know"] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
-        for idx, skip in enumerate(should_skip):
-            if skip:
-                predictions[idx] = "I don't know"
-
+        
         predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
 
