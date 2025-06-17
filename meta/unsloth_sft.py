@@ -140,6 +140,11 @@ processor = AutoProcessor.from_pretrained("meta-llama/Llama-3.2-11B-Vision")
 
 #     return batch
 
+
+# preprocessor, {"messages": "messages", "images": "images"} ==> string "<begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
+# Tokenize, string ==> input_ids, attention_mask, image_token_ids, image_attention_mask
+# batch ....
+
 def collate_fn(examples):
     texts = [
         f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
@@ -162,30 +167,7 @@ def collate_fn(examples):
     return batch
 
 ds = ds.map(collate_fn, batched=True)
-
 ds = ds.remove_columns(["finetune_answer", "user_text"])
-
-unsloth_template = \
-    "{{ bos_token }}"\
-    "{% if messages[0]['role'] == 'system' %}"\
-        "{{ messages[0]['content'] + '\n' }}"\
-        "{% set loop_messages = messages[1:] %}"\
-    "{% else %}"\
-        "{{ '{system_message}' + '\n' }}"\
-        "{% set loop_messages = messages %}"\
-    "{% endif %}"\
-    "{% for message in loop_messages %}"\
-        "{% if message['role'] == 'user' %}"\
-            "{{ '>>> User: ' + message['content'] + '\n' }}"\
-        "{% elif message['role'] == 'assistant' %}"\
-            "{{ '>>> Assistant: ' + message['content'] + eos_token + '\n' }}"\
-        "{% else %}"\
-            "{{ raise_exception('Only user and assistant roles are supported!') }}"\
-        "{% endif %}"\
-    "{% endfor %}"\
-    "{% if add_generation_prompt %}"\
-        "{{ '>>> Assistant: ' }}"\
-    "{% endif %}"
 
 if True:
 
@@ -204,7 +186,7 @@ if True:
         tokenizer = tokenizer,
 
 
-        #data_collator = collate_fn, # Must use!
+        data_collator = DataCollatorForSeq2Seq(tokenizer=processor), # Must use!
         train_dataset = ds,
         
         
