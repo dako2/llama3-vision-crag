@@ -1,6 +1,6 @@
 from unsloth import FastLanguageModel, FastVisionModel
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import pandas as pd
 
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
