@@ -12,6 +12,10 @@ import pandas as pd
 from transformers import MllamaForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model
 import torch
+import wandb
+wandb.login()
+wandb.init(project="cragmm-huggingface-sft", name="llama3-vision-sft")
+
 
 ckpt = "meta-llama/Llama-3.2-11B-Vision"
 USE_LORA = False
@@ -153,13 +157,14 @@ from transformers import TrainingArguments
 args=TrainingArguments(
             num_train_epochs=3,
             remove_unused_columns=False,
-            per_device_train_batch_size=1,
+            per_device_train_batch_size=32,
             gradient_accumulation_steps=4,
             warmup_steps=2,
             learning_rate=2e-5,
             weight_decay=1e-6,
             adam_beta2=0.999,
-            logging_steps=250,
+            report_to="wandb",
+            logging_steps=10,
             save_strategy="no",
             optim="adamw_torch",
             push_to_hub=True,
@@ -176,5 +181,5 @@ trainer = Trainer(
     data_collator=custom_collator,
     args=args
 )
-
+wandb.watch(model, log="all", log_freq=50)
 trainer.train()
