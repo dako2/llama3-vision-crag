@@ -17,7 +17,7 @@ import agents.evaluation_utils as ev
 
 from agents.miao_router import MiaoRouter
 
-mr = MiaoRouter()
+#mr = MiaoRouter()
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
@@ -351,7 +351,8 @@ class SimpleRAGAgent(BaseAgent):
 
                 snippet = result.get('page_snippet', '')
                 print(result)
-                rag_context.append(str(snippet))
+                if snippet:
+                    rag_context.append(str(snippet))
 
             # # Add retrieved context if available
             # rag_context = ""
@@ -503,7 +504,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         print(f"Processing batch of {len(queries)} queries with RAG")
 
-        should_skip_by_difficulty_index = mr.route(queries)
+        #should_skip_by_difficulty_index = mr.route(queries)
         #print("should_skip_by_difficulty_index:",should_skip_by_difficulty_index)
 
         images = resize_images(images)
@@ -528,9 +529,9 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 continue
 
-            if should_skip_by_difficulty_index:
-                if idx in should_skip_by_difficulty_index:
-                    continue
+            # if should_skip_by_difficulty_index:
+            #     if idx in should_skip_by_difficulty_index:
+            #         continue
 
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
