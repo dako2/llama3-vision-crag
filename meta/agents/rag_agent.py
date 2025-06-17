@@ -14,10 +14,6 @@ from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
 
-from agents.miao_router import MiaoRouter
-mr = MiaoRouter()
-
-
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
@@ -78,8 +74,6 @@ def normalize_answer_idk(text: str) -> str:
     uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
-        return "I DON't KNOW"
-    if not text:
         return "I DON't KNOW"
     return text
 
@@ -502,9 +496,7 @@ class SimpleRAGAgent(BaseAgent):
         Returns:
             List[str]: List of generated responses, one per input query.
         """
-        #should_skip_by_difficulty_index = mr.route(queries)
-
-        #print(f"\n\n\n\n\n=====miao=======should_skip_by_difficulty_index {should_skip_by_difficulty_index} \n\n\n\n\n\n\n\n")
+        print(f"Processing batch of {len(queries)} queries with RAG")
         
         images = resize_images(images)
 
@@ -527,10 +519,6 @@ class SimpleRAGAgent(BaseAgent):
         )):
             if skip:
                 continue
-
-            # if should_skip_by_difficulty_index:
-            #     if idx in should_skip_by_difficulty_index:
-            #         continue
 
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
@@ -571,14 +559,10 @@ class SimpleRAGAgent(BaseAgent):
         for idx, skip in enumerate(should_skip):
             if skip:
                 predictions[idx] = "I don't know"
-        
-        # predictions = ["I DoN't kNoW"] * len(queries)
-        # for idx, text in zip(original_indices, generated_texts):
-        #     predictions[idx] = text
-        
+
         predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
-        
+
         # rows = []
         # for sid, q, gt, pred, caption, mes in zip(session_ids, queries, ground_truths, predictions, image_summaries, full_messages_batch):
         #     rows.append({"session_id": sid, "turn_idx": 0, 
