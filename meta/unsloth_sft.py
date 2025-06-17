@@ -152,11 +152,11 @@ def collate_fn(examples):
     labels[labels == 128256] = -100
     batch["labels"] = labels
 
-    # # ✅ Move everything to GPU, but only cast float tensors to bfloat16
-    # for k in batch:
-    #     if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
-    #         batch[k] = batch[k].to(torch.bfloat16)
-    #     batch[k] = batch[k].to("cuda")
+    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    for k in batch:
+        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            batch[k] = batch[k].to(torch.bfloat16)
+        batch[k] = batch[k].to("cuda")
 
     return batch
 
