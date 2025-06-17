@@ -234,7 +234,7 @@ class SimpleRAGAgent(BaseAgent):
         messages_batch = []
         for query, image in zip(queries, images):
             messages = [
-                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
+                {"role": "user", "content": [{"type": "image", "image": image}, {"type": "text", "text": summarize_prompt.format(query=query)}]},
             ]
             
             # Format prompt using the tokenizer
@@ -252,6 +252,7 @@ class SimpleRAGAgent(BaseAgent):
                     "image": image
                 }
             })
+            
             messages_batch.append(messages)
         
         # Generate summaries in a single batch call
