@@ -40,7 +40,7 @@ ensure_crag_cache_dir_is_configured()
 console = Console()
 
 # Constants for configuration
-DEFAULT_EVAL_MODEL = "gpt-4.1-mini"
+DEFAULT_EVAL_MODEL = "gpt-4o-mini"
 MAX_API_RETRIES = 3
 DEFAULT_NUM_WORKERS = 8
 
@@ -86,8 +86,10 @@ class CRAGEvaluator:
         self.all_turn_data: list[dict[str, any]] = []
         self.session_ids_evaluated: set[str] = set()
         
-        # self.tokenizer = Tokenizer.from_pretrained("meta-llama/Llama-3.2-1B-Instruct")
-        # self.tokenizer.enable_truncation(max_length=MAX_RESPONSE_LENGTH_IN_TOKENS)
+        self.tokenizer = Tokenizer.from_pretrained("meta-llama/Llama-3.2-1B-Instruct")
+        self.tokenizer.enable_truncation(max_length=MAX_RESPONSE_LENGTH_IN_TOKENS)
+
+
 
     @staticmethod
     def get_system_message() -> str:
@@ -150,12 +152,8 @@ class CRAGEvaluator:
             A dictionary with evaluation results added to crag_turn_data.
         """
         agent_response = crag_turn_data["agent_response"]
-        ground_truth = crag_turn_data["ground_truth"][0]
+        ground_truth = crag_turn_data["ground_truth"]
         query = crag_turn_data["query"]
-
-        print(agent_response)
-        print(ground_truth)
-        print(query)
 
         is_idk = "i don't know" in agent_response.lower()
         is_exact_match = agent_response.strip().lower() == ground_truth.strip().lower()
@@ -224,8 +222,6 @@ class CRAGEvaluator:
             queries = batch["queries"]
             images = batch["images"]
             conversation_histories = batch["conversation_histories"]
-            temps = batch["temps"]
-            print("hi qi i saw tempssssssss\n\n\n")
 
             message_histories = []
             interaction_id_histories = []
@@ -248,8 +244,8 @@ class CRAGEvaluator:
                 interaction_id_histories.append(interaction_id_history)
 
             # Generate responses for the current batch
-            agent_responses, full_messages_batch, image_summaries, caption_messages_batch = self.agent.batch_generate_response(queries, images, message_histories, batch["session_ids"], batch["answers"])
-            #agent_responses = self.truncate_agent_responses(agent_responses) # Truncase each response to the maximum allowed length (75 tokens)
+            agent_responses = self.agent.batch_generate_response(queries, images, message_histories)
+            agent_responses = self.truncate_agent_responses(agent_responses) # Truncase each response to the maximum allowed length (75 tokens)
             
             # Collect responses and add evaluation data
             for idx, interaction_id in enumerate(interaction_ids):
@@ -268,12 +264,7 @@ class CRAGEvaluator:
                     "ground_truth": batch["answers"][idx],
                     "agent_response": agent_response,
                     "total_turn_count": batch["total_turn_counts"][idx],
-                    "interaction_id_history": interaction_id_histories[idx],
-                    "answer_history": batch["answer_histories"][idx],
-                    "image_caption": image_summaries[idx],
-                    "image_caption_messages": caption_messages_batch[idx],
-                    "messages": full_messages_batch[idx],
-
+                    "interaction_id_history": interaction_id_histories[idx]
                 })
                 self.session_ids_evaluated.add(batch["session_ids"][idx])
 
@@ -421,8 +412,8 @@ class CRAGEvaluator:
         
         def _evaluation_progress_callback(turn_evaluated: int, total_turns: int) -> None:
             # Can be useful to track progress of the evaluation
-            console.log(f"[blue]Evaluated {turn_evaluated}/{total_turns} turns[/blue]")
-            #pass
+            # console.log(f"[blue]Evaluated {turn_evaluated}/{total_turns} turns[/blue]")
+            pass
             
         turn_evaluation_results, score_dictionaries = self.evaluate_agent_responses(self.all_turn_data, _evaluation_progress_callback)
         return turn_evaluation_results, score_dictionaries
@@ -431,10 +422,10 @@ class CRAGEvaluator:
         """
         Truncate each agent response to the maximum allowed length.
         """
-        # encodings = self.tokenizer.encode_batch(agent_responses)
-        # trimmed_agent_responses = [self.tokenizer.decode(enc.ids) for enc in encodings]
-        # return trimmed_agent_responses    
-        return agent_responses
+        encodings = self.tokenizer.encode_batch(agent_responses)
+        trimmed_agent_responses = [self.tokenizer.decode(enc.ids) for enc in encodings]
+        return trimmed_agent_responses    
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -450,13 +441,13 @@ def main() -> None:
     parser.add_argument(
         "--split",
         type=str,
-        default="public_test", 
+        default="public_test",
         help="Dataset split to use ('validation', 'public_test')",
     )
     parser.add_argument(
-        "--num_conversations",
+        "--num-conversations",
         type=int,
-        default=10,
+        default=1,
         help="Number of conversations to evaluate (default: -1). -1 evaluates all conversations, while a positive number evaluates that many conversations.",
     )
     parser.add_argument(
@@ -475,12 +466,6 @@ def main() -> None:
         type=str,
         default=DEFAULT_EVAL_MODEL,
         help="OpenAI model for semantic evaluation. Pass 'None' to disable semantic evaluation.",
-    )
-    parser.add_argument(
-        "--model-name",
-        type=str,
-        default="meta-llama/Llama-3.2-11B-Vision-Instruct",
-        help="Model name or path for loading the LLM (default: meta-llama/Llama-3.2-11B-Vision-Instruct)",
     )
     parser.add_argument(
         "--output-dir",
@@ -509,7 +494,6 @@ def main() -> None:
 
     console.print(f"[bold blue]Loading {args.dataset_type} dataset...[/bold blue]")
     repo_name = f"crag-mm-2025/crag-mm-{args.dataset_type}-public"
-    
     console.print(
         f"[bold green]Loading from HuggingFace:[/bold green] {repo_name} (revision: {args.revision})"
     )
@@ -548,24 +532,16 @@ def main() -> None:
         # Suppress web search API - useful for Task 1 (Single-source Augmentation)
         search_api_web_hf_dataset_id = None
     
-    # search_pipeline = UnifiedSearchPipeline(
-    #     text_model_name=search_api_text_model_name,
-    #     image_model_name=search_api_image_model_name,
-    #     web_hf_dataset_id=search_api_web_hf_dataset_id,
-    #     image_hf_dataset_id=search_api_image_hf_dataset_id,
-    # )
-
     search_pipeline = UnifiedSearchPipeline(
-        text_model_name="BAAI/bge-large-en-v1.5",
-        image_model_name="openai/clip-vit-large-patch14-336",
-        web_hf_dataset_id="crag-mm-2025/web-search-index-validation",
-        image_hf_dataset_id="crag-mm-2025/image-search-index-validation",
+        text_model_name=search_api_text_model_name,
+        image_model_name=search_api_image_model_name,
+        web_hf_dataset_id=search_api_web_hf_dataset_id,
+        image_hf_dataset_id=search_api_image_hf_dataset_id,
     )
- 
 
     evaluator = CRAGEvaluator(
         dataset=dataset[split_to_use],
-        agent=UserAgent(search_pipeline=search_pipeline,model_name=args.model_name),
+        agent=UserAgent(search_pipeline=search_pipeline),
         eval_model_name=args.eval_model,
         num_conversations=args.num_conversations,
         show_progress=not args.no_progress,
@@ -592,9 +568,8 @@ def main() -> None:
             is_multi_turn=(args.dataset_type == "multi-turn"),
         )
 
-    output_dir = "temp"
-    os.makedirs(output_dir, exist_ok=True)
-    evaluator.save_results(turn_evaluation_results, score_dictionaries, output_dir)
+    if args.output_dir:
+        evaluator.save_results(turn_evaluation_results, score_dictionaries, args.output_dir)
 
 
 if __name__ == "__main__":
