@@ -152,7 +152,8 @@ def collate_fn(examples):
 
     return batch
 
-# ds = ds.map(collate_fn, batched=True)
+ds = ds.map(collate_fn, batched=True)
+
 unsloth_template = \
     "{{ bos_token }}"\
     "{% if messages[0]['role'] == 'system' %}"\
@@ -177,21 +178,21 @@ unsloth_template = \
 
 if True:
 
-    data_collator = UnslothVisionDataCollator(
-        model,
-        processor.tokenizer,
-        train_on_responses_only = True,
-        instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-        response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",        
-    )
+    # data_collator = UnslothVisionDataCollator(
+    #     model,
+    #     processor.tokenizer,
+    #     train_on_responses_only = True,
+    #     instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+    #     response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",        
+    # )
 
     FastVisionModel.for_training(model) # Enable for training!
 
     trainer = SFTTrainer(
         model = model,
         tokenizer = tokenizer,
-        data_collator = data_collator, # Must use!
-        train_dataset = converted_dataset,
+        data_collator = collate_fn, # Must use!
+        train_dataset = ds,
         args = SFTConfig(
             per_device_train_batch_size = 2,
             gradient_accumulation_steps = 4,
