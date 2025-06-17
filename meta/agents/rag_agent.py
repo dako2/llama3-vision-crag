@@ -13,6 +13,8 @@ from agents._reranker import SentenceReranker
 from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
+
+
 from agents.miao_router import MiaoRouter
 
 mr = MiaoRouter()
@@ -526,8 +528,9 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 continue
 
-            if idx in should_skip_by_difficulty_index:
-                continue
+            if should_skip_by_difficulty_index:
+                if idx in should_skip_by_difficulty_index:
+                    continue
 
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]

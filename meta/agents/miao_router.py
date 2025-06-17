@@ -494,13 +494,12 @@ class MiaoRouter():
         self.clf_loaded = joblib.load("./agents/lgbm_full.pkl")
 
     def route(self, queries):
-        df = pd.DataFrame({"query": queries})
-        out = generate_features(df)
+        df1 = pd.DataFrame({"query": queries})
+        out = generate_features(df1)
 
         X_out = out[self.feature_cols]
         
         out['y_pred'] = self.clf_loaded.predict_proba(X_out)[:, 1]
-        high_confidence_index = []
         high_confidence_index = out[out["y_pred"] >= 0.61].index.to_list()
 
         return high_confidence_index
