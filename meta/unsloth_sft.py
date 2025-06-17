@@ -157,7 +157,6 @@ def collate_fn(examples):
     #image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
     #labels[labels == image_token_id] = -100
     
-
     batch["labels"] = labels
 
     return batch
@@ -203,8 +202,13 @@ if True:
     trainer = SFTTrainer(
         model = model,
         tokenizer = tokenizer,
-        data_collator = collate_fn, # Must use!
+
+
+        #data_collator = collate_fn, # Must use!
         train_dataset = ds,
+        
+        
+        
         args = SFTConfig(
             per_device_train_batch_size = 2,
             gradient_accumulation_steps = 4,
