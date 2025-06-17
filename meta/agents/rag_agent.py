@@ -71,7 +71,7 @@ def normalize_answer_idk(text: str) -> str:
     the canonical string "i don't know".
     """
     text_lower = text.lower()
-    uncertain_phrases = ["don't know", "don't", "not sure", "unable", "not", "not able to"]
+    uncertain_phrases = [":\n","however","but","don't know", "don't", "not sure", "unable", "not", "not able to"]
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I DON't KNOW"
@@ -161,23 +161,25 @@ class SimpleRAGAgent(BaseAgent):
             } # In the CRAG-MM dataset, every conversation has at most 1 image
         )
         self.tokenizer = self.llm.get_tokenizer()
+
+
         
-        if self.tokenizer.chat_template is None:
-            tmpl_file = Path(self.model_name) / "chat_template.json"
-            if tmpl_file.exists():
-                self.tokenizer.chat_template = tmpl_file.read_text()
-                print("Chat template loaded from local file.")
-            else:
-                # fallback – inline template for Llama-3.2 Vision
-                self.tokenizer.chat_template = (
-                    "{% if messages[0]['role'] == 'system' %}"
-                    "{{ messages[0]['content'] }}{% endif %}"
-                    "{% for m in messages[1:] %}"
-                    "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
-                    "{% endfor %}"
-                    "{{ '<|im_start|>assistant\\n' }}"
-                )
-                print("Injected default chat template.")
+        # if self.tokenizer.chat_template is None:
+        #     tmpl_file = Path(self.model_name) / "chat_template.json"
+        #     if tmpl_file.exists():
+        #         self.tokenizer.chat_template = tmpl_file.read_text()
+        #         print("Chat template loaded from local file.")
+        #     else:
+        #         # fallback – inline template for Llama-3.2 Vision
+        #         self.tokenizer.chat_template = (
+        #             "{% if messages[0]['role'] == 'system' %}"
+        #             "{{ messages[0]['content'] }}{% endif %}"
+        #             "{% for m in messages[1:] %}"
+        #             "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
+        #             "{% endfor %}"
+        #             "{{ '<|im_start|>assistant\\n' }}"
+        #         )
+        #         print("Injected default chat template.")
 
         print("Models loaded successfully")
 
@@ -334,10 +336,9 @@ class SimpleRAGAgent(BaseAgent):
                 search_results_batch.append("")
                 continue
 
-            print("searching:",query)
-
             q = f"{query} {summary}"
             #q = f"{search_summary}"
+            print("searching:",q)
 
             rag_context = []
             results = self.search_pipeline(q, k=NUM_SEARCH_RESULTS)
@@ -534,6 +535,22 @@ class SimpleRAGAgent(BaseAgent):
                 "prompt": formatted_prompt,
                 # "multi_modal_data": {"image": image}
             })
+
+            print("\n\n\n\n=============================qt to debug")
+            print(formatted_prompt)
+            print("\n\n\n\n=============================qt to debug")
+
+            # rag_inputs.append(
+            #     {  # Explicit prompt
+            #         # "encoder_prompt": {
+            #         #     "prompt": "<|image|>",
+            #         #     "multi_modal_data": {
+            #         #         "image": ImageAsset("stop_sign").pil_image,
+            #         #     },
+            #         # },
+            #         "decoder_prompt": "<|begin_of_text|>Please describe the image.",  # noqa: E501
+            #     })
+
             original_indices.append(idx)
             full_messages_batch[idx] = messages  # ✅ Save message to aligned batch
 
