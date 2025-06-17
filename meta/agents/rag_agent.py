@@ -502,7 +502,7 @@ class SimpleRAGAgent(BaseAgent):
         """
         should_skip_by_difficulty_index = mr.route(queries)
 
-        print(f"Processing batch of {len(queries)} queries with RAG")
+        print(f"\n\n\n\n\n=====miao=======should_skip_by_difficulty_index {should_skip_by_difficulty_index} \n\n\n\n\n\n\n\n")
         
         images = resize_images(images)
 
