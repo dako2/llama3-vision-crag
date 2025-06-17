@@ -438,43 +438,62 @@ def _time_ref(q: str) -> str:
 # ────────────────────────────────
 def generate_features(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-
-    # word-count buckets
     wc = out["query"].str.split().str.len()
     out["len_short"] = (wc <= 6).astype(int)
     out["len_medium"] = ((wc > 6) & (wc <= 15)).astype(int)
     out["len_long"] = (wc > 15).astype(int)
 
-    # question-cat dummies
+    # Question category
     qcat = out["query"].map(_classify_q)
-    for cat in qcat.unique():
+    qcat_values = ["who", "what", "where", "when", "why", "how"]
+    for cat in qcat_values:
         out[f"is_{cat}"] = (qcat == cat).astype(int)
 
-    # answer-type dummies
+    # Answer type
     atype = out["query"].map(_answer_type)
-    for cat in atype.unique():
+    atype_values = ["entity", "number", "boolean", "description"]
+    for cat in atype_values:
         out[f"ans_{cat}"] = (atype == cat).astype(int)
 
-    # numeric & time flags
+    # Numeric and time
     out["has_number"] = out["query"].str.contains(r"\d").astype(int)
     tref = out["query"].map(_time_ref)
-    out["time_date"] = (tref == "date").astype(int)
-    out["time_month"] = (tref == "month").astype(int)
-    out["time_year"] = (tref == "year").astype(int)
+    for t in ["date", "month", "year"]:
+        out[f"time_{t}"] = (tref == t).astype(int)
 
-    # domain flags
-    out["is_vehicle"] = out["query"].str.contains(_AUTO_RE).astype(int)
-    out["is_plant"] = out["query"].str.contains(_PLANT_RE).astype(int)
-    out["is_food"] = out["query"].str.contains(_FOOD_RE).astype(int)
-    out["is_animal"] = out["query"].str.contains(_ANIMAL_RE).astype(int)
+    # Domains
+    domain_flags = {
+        "is_vehicle": _AUTO_RE,
+        "is_plant": _PLANT_RE,
+        "is_food": _FOOD_RE,
+        "is_animal": _ANIMAL_RE,
+    }
+    for name, pattern in domain_flags.items():
+        out[name] = out["query"].str.contains(pattern).astype(int)
 
-    # entity complexity flags
+    # Entity complexity
     ecomp = out["query"].map(_entity_complexity)
-    out["ent_single"] = (ecomp == "single").astype(int)
-    out["ent_multiple"] = (ecomp == "multiple").astype(int)
-    out["ent_none"] = (ecomp == "none").astype(int)
+    for cat in ["single", "multiple", "none"]:
+        out[f"ent_{cat}"] = (ecomp == cat).astype(int)
 
+    # Ensure all columns exist (fallback)
+    FEATURE_COLS = [
+        'len_short','len_medium','len_long','is_yesno_be','is_can_could',
+        'is_definition_what','is_count_measure','is_other','is_who_which',
+        'is_time_when','is_compare','is_location_where','is_exists_avail',
+        'is_how_other','is_price_cost','is_reason_why',
+        'ans_yes_no','ans_boolean_choice','ans_quantity','ans_other',
+        'ans_comparison','ans_entity_name','ans_procedure','ans_time_date',
+        'ans_location','ans_reason_explain','ans_list_set','has_number',
+        'time_date','time_month','time_year','is_vehicle','is_plant',
+        'is_food','is_animal','ent_single','ent_multiple','ent_none',
+    ]
+    for col in FEATURE_COLS:
+        if col not in out.columns:
+            out[col] = 0
+            
     return out
+
 
 class MiaoRouter():
 
