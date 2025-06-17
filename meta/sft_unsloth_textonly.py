@@ -73,13 +73,13 @@ def convert_to_conversation(sample):
     conversation = [
         { "role": "user",
           "content" : [
-            {"type" : "text",  "text"  : sample["user_text"].values},
+            {"type" : "text",  "text"  : sample["user_text"]},
             #{"type" : "image", "image" : sample["image"]} 
             ]
         },
         { "role" : "assistant",
           "content" : [
-            {"type" : "text",  "text"  : sample["finetune_answer"].values} ]
+            {"type" : "text",  "text"  : sample["finetune_answer"]} ]
         },
     ]
     return { "messages" : conversation }
@@ -94,13 +94,19 @@ df["finetune_answer"] = df["ground_truth"]  # Ensure column exists
 df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't know. it's difficult to answer the question accurately."
 df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
-# Step 3: Convert to Hugging Face dataset
+import json
+
+# Step 3: Convert to HF Dataset
 ds = Dataset.from_dict({
     'finetune_answer': df['finetune_answer'].tolist(),
     'user_text': df['user_text'].tolist(),
 })
 
-converted_dataset = [convert_to_conversation(sample) for sample in df]
+# Step 4: Format to chat messages as JSON string per sample
+converted_dataset = Dataset.from_list([
+    {"messages": json.dumps(convert_to_conversation(row))}
+    for _, row in df.iterrows()
+])
 
 print(converted_dataset[0])
 
@@ -147,4 +153,5 @@ if True:
         ),
     )
     
+    wandb.watch(model, log="all", log_freq=50)
     trainer_stats = trainer.train()
