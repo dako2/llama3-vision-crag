@@ -128,11 +128,15 @@ class SimpleRAGAgent(BaseAgent):
             ValueError: If search_pipeline is None, as it's required for RAG functionality.
         """
         super().__init__(search_pipeline)
+
+
         
         if search_pipeline is None:
             raise ValueError("Search pipeline is required for RAG agent")
             
-        self.model_name = model_name
+        #self.model_name = model_name
+        self.model_name = "../outputs/checkpoint-90"
+        
         self.max_gen_len = max_gen_len
         self.timestamp = int(time.time())
         self.initialize_models()

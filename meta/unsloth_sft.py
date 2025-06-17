@@ -192,18 +192,20 @@ if True:
         
         
         args = SFTConfig(
-            per_device_train_batch_size = 16,
+            per_device_train_batch_size = 8,
             gradient_accumulation_steps = 4,
             warmup_steps = 5,
-            max_steps = 90,
-            num_train_epochs = 3, # Set this instead of max_steps for full training runs
+            max_steps = 160,
+            num_train_epochs = 5, # Set this instead of max_steps for full training runs
             learning_rate = 2e-4,
             fp16 = False,
             bf16 = True,
-            logging_steps = 1,
+            logging_steps = 10, 
             optim = "adamw_torch",
             weight_decay = 0.01,
             lr_scheduler_type = "linear",
+            save_strategy="epoch",
+            save_total_limit=3,
             seed = 3407,
             output_dir = "outputs",
             report_to = "none",     # For Weights and Biases

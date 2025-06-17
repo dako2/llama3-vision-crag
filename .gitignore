@@ -9,3 +9,4 @@ results/*.pkl
 ./meta/outputs/
 *.safetensors
 *.bin
+unsloth_compiled_cache/
