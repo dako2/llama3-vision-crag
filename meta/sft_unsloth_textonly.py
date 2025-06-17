@@ -1,7 +1,7 @@
-from unsloth import FastLanguageModel
+from unsloth import FastLanguageModel, FastVisionModel
 import torch
 from datasets import load_dataset
-from trl import SFTTrainer
+
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
 from unsloth import is_bfloat16_supported
 from unsloth.chat_templates import get_chat_template
@@ -9,152 +9,122 @@ from unsloth.chat_templates import train_on_responses_only
 from unsloth.chat_templates import standardize_sharegpt
 import wandb
 
+from unsloth import is_bf16_supported
+from unsloth.trainer import UnslothVisionDataCollator
+from trl import SFTTrainer, SFTConfig
+
+
 # 0) W&B login
 wandb.login()
 wandb.init()
 
+max_seq_length = 8192 # Choose any! We auto support RoPE Scaling internally!
+dtype = torch.bfloat16 # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
+load_in_4bit = False # Use 4bit quantization to reduce memory usage. Can be False.
 
-max_seq_length = 2048 # Choose any! We auto support RoPE Scaling internally!
-dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
-load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
-
-# 4bit pre quantized models we support for 4x faster downloading + no OOMs.
-fourbit_models = [
-    #"unsloth/Meta-Llama-3.1-8B-bnb-4bit",      # Llama-3.1 2x faster
-    #"unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
-    #"unsloth/Llama-3.2-3B-bnb-4bit",
-    "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
-]
-# … imports and FP16/4-bit flags …
-
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "unsloth/Llama-3.2-3B-Instruct-bnb-4bit",
-    max_seq_length = 2048,
-    dtype = None,
-    load_in_4bit = True,
+model, tokenizer = FastVisionModel.from_pretrained(
+    model_name = "unsloth/Llama-3.2-11B-Vision",
+    max_seq_length = max_seq_length,
+    dtype = dtype,
+    load_in_4bit = load_in_4bit,
+    use_gradient_checkpointing = "unsloth", # True or "unsloth" for long context
 )
 
-model = FastLanguageModel.get_peft_model(
-    model, r=16,
-    target_modules=["q_proj","k_proj","v_proj","o_proj","gate_proj","up_proj","down_proj"],
-    lora_alpha=16, lora_dropout=0, bias="none",
-    use_gradient_checkpointing="unsloth", random_state=3407,
+model = FastVisionModel.get_peft_model(
+    model,
+    finetune_vision_layers     = False, # False if not finetuning vision layers
+    finetune_language_layers   = True, # False if not finetuning language layers
+    finetune_attention_modules = True, # False if not finetuning attention layers
+    finetune_mlp_modules       = True, # False if not finetuning MLP layers
+
+    r = 16,           # The larger, the higher the accuracy, but might overfit
+    lora_alpha = 16,  # Recommended alpha == r at least
+    lora_dropout = 0,
+    bias = "none",
+    random_state = 3407,
+    use_rslora = False,  # We support rank stabilized LoRA
+    loftq_config = None, # And LoftQ
+    # target_modules = "all-linear", # Optional now! Can specify a list if needed
 )
 
-from unsloth.chat_templates import get_chat_template
-tokenizer = get_chat_template(tokenizer, chat_template="llama-3.2")
+#instruction = "You are an expert radiographer. Describe accurately what you see in this image."
+instruction = ""
+def convert_to_conversation(sample):
+    conversation = [
+        { "role": "user",
+          "content" : [
+            {"type" : "text",  "text"  : sample["user_text"].values},
+            #{"type" : "image", "image" : sample["image"]} 
+            ]
+        },
+        { "role" : "assistant",
+          "content" : [
+            {"type" : "text",  "text"  : sample["finetune_answer"].values} ]
+        },
+    ]
+    return { "messages" : conversation }
 
-# --------------  LOAD + CONVERT DATA  --------------
-raw = load_dataset("json", data_files="sft_data_textonly.jsonl", split="train")
-# 1) Load your JSONL as one big dataset
-ds0 = load_dataset(
-    "json",
-    data_files="sft_data_textonly.jsonl",
-    split="train",   # “train” here just means “don’t pre-split”—you’ll split yourself
-)
+df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
 
-# 2) Randomly split 10% off for validation
-splits = ds0.train_test_split(test_size=0.1, shuffle=False, seed=42)
+df["user_text"] = df["messages"].apply(safe_parse_and_extract)
+df.loc[df["user_text"] == "", "user_text"] = df["query"]
+# Step 2: Clean finetune_answer for specific API response
+df["ground_truth"] = df["ground_truth"].apply(parse2)
+df["finetune_answer"] = df["ground_truth"]  # Ensure column exists
+df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't know. it's difficult to answer the question accurately."
+df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
-raw = splits["train"]
-valid_ds = splits["test"]    # by convention “test” is the hold-out split
+# Step 3: Convert to Hugging Face dataset
+ds = Dataset.from_dict({
+    'finetune_answer': df['finetune_answer'].tolist(),
+    'user_text': df['user_text'].tolist(),
+})
 
+converted_dataset = [convert_to_conversation(sample) for sample in df]
 
-def strip_images_and_flatten(example):
-    conv = []
-    for msg in example["messages"]:
-        texts = [c["text"] for c in msg["content"] if c["type"]=="text"]
-        if texts:
-            conv.append({"role": msg["role"], "content": "\n".join(texts).strip()})
-    return {"conversations": conv}
+print(converted_dataset[0])
 
-ds = raw.map(strip_images_and_flatten, remove_columns=["messages"])
+if True:
 
-def to_chat_template(examples):
-    return {"text": [
-        tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=False)
-        for conv in examples["conversations"]
-    ]}
+    data_collator = UnslothVisionDataCollator(
+        model,
+        tokenizer,
+        train_on_responses_only = False,
+        instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+        response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
+    )
 
-ds = ds.map(to_chat_template, batched=True)
-assert all(len(x) > 0 for x in ds["text"])
+    FastVisionModel.for_training(model) # Enable for training!
 
-# --------------  TRAIN  --------------
-trainer = SFTTrainer(
-    model              = model,
-    tokenizer          = tokenizer,
-    train_dataset      = ds,
-    dataset_text_field = "text",
-    max_seq_length     = 2048,
-    data_collator      = DataCollatorForSeq2Seq(tokenizer),
-    packing            = False,
-    args = TrainingArguments(
-        per_device_train_batch_size = 16,
-        gradient_accumulation_steps = 4,
-        max_steps     = 60,
-        learning_rate = 1e-4,   # (or 2e-4 if you wish)
-        bf16          = True,   # ✅ turn *on* bfloat-16
-        fp16          = False,  # ❌ turn *off* fp16
-        output_dir    = "outputs",
-        seed          = 3407,
-        logging_steps = 1,
-        report_to="wandb", 
-    ),
-)
+    trainer = SFTTrainer(
+        model = model,
+        tokenizer = tokenizer,
+        data_collator = data_collator, # Must use!
+        train_dataset = converted_dataset,
+        args = SFTConfig(
+            per_device_train_batch_size = 2,
+            gradient_accumulation_steps = 4,
+            warmup_steps = 5,
+            max_steps = 30,
+            # num_train_epochs = 1, # Set this instead of max_steps for full training runs
+            learning_rate = 2e-4,
+            fp16 = not is_bf16_supported(),
+            bf16 = is_bf16_supported(),
+            logging_steps = 1,
+            optim = "adamw_8bit",
+            weight_decay = 0.01,
+            lr_scheduler_type = "linear",
+            seed = 3407,
+            output_dir = "outputs",
+            report_to = "none",     # For Weights and Biases
 
-
-# from unsloth.chat_templates import train_on_responses_only
-# trainer = train_on_responses_only(
-#     trainer,
-#     instruction_part="<|start_header_id|>user<|end_header_id|>\n\n",
-#     response_part   ="<|start_header_id|>assistant<|end_header_id|>\n\n",
-# )
-
-wandb.watch(model, log="all", log_freq=50)
-trainer_stats = trainer.train()
-print(trainer_stats)
-
-model.save_pretrained("Llama-3.2-3B-Instruct-bnb-4bit-idk")
-tokenizer.save_pretrained("Llama-3.2-3B-Instruct-bnb-4bit-idk")
-
-# Merge to 16bit
-if False: model.save_pretrained_merged("model", tokenizer, save_method = "merged_16bit",)
-if False: model.push_to_hub_merged("hf/model", tokenizer, save_method = "merged_16bit", token = "")
-
-# Merge to 4bit
-if False: model.save_pretrained_merged("model", tokenizer, save_method = "merged_4bit",)
-if False: model.push_to_hub_merged("hf/model", tokenizer, save_method = "merged_4bit", token = "")
-
-# Just LoRA adapters
-if False: model.save_pretrained_merged("model", tokenizer, save_method = "lora",)
-if False: model.push_to_hub_merged("hf/model", tokenizer, save_method = "lora", token = "")
-
-#from unsloth import FastLanguageModel
-def inference(model):
-    if False:
-        
-        model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = "lora_model", # YOUR MODEL YOU USED FOR TRAINING
-            max_seq_length = max_seq_length,
-            dtype = dtype,
-            load_in_4bit = load_in_4bit,
-        )
-        FastLanguageModel.for_inference(model) # Enable native 2x faster inference
-
-    # alpaca_prompt = You MUST copy from above!
-
-    inputs = tokenizer(
-    [
-        alpaca_prompt.format(
-            "What is a famous tall tower in Paris?", # instruction
-            "", # input
-            "", # output - leave this blank for generation!
-        )
-    ], return_tensors = "pt").to("cuda")
-
-    # from transformers import TextStreamer
-    # text_streamer = TextStreamer(tokenizer)
-    # _ = model.generate(**inputs, streamer = text_streamer, max_new_tokens = 128)
-    outputs = model.generate(**inputs, max_new_tokens = 64, use_cache = True)
-    tokenizer.batch_decode(outputs)
-
+            # You MUST put the below items for vision finetuning:
+            remove_unused_columns = False,
+            dataset_text_field = "",
+            dataset_kwargs = {"skip_prepare_dataset": True},
+            dataset_num_proc = 4,
+            max_seq_length = 2048,
+        ),
+    )
+    
+    trainer_stats = trainer.train()

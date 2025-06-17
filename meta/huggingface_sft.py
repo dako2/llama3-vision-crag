@@ -1,103 +1,70 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#https://github.com/huggingface/huggingface-llama-recipes/blob/main/fine_tune/Llama-Vision%20FT.ipynb
+#torch tune: https://github.com/pytorch/torchtune/blob/main/recipes/full_finetune_single_device.py
+#llama-cookbook: https://github.com/meta-llama/llama-cookbook/tree/main/getting-started/finetuning
 
+from datasets import load_dataset
+from datasets import Dataset
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import ast
 import pandas as pd
+
+from transformers import MllamaForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model
 import torch
 import wandb
-
-from datasets import Dataset
-from transformers import (
-    MllamaForConditionalGeneration,
-    AutoProcessor,
-    TrainingArguments,
-    Trainer,
-    default_data_collator,
-)
-from peft import LoraConfig, get_peft_model
-
-# ------------------------------------------------------------------------------
-# 1. Environment & logging
-# ------------------------------------------------------------------------------
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 wandb.login()
-wandb.init(
-    project="cragmm-huggingface-sft",
-    name="llama3-vision-sft",
-)
+wandb.init(project="cragmm-sft", name="llama3-vision-sft")
 
-# ------------------------------------------------------------------------------
-# 2. Model & PEFT configuration
-# ------------------------------------------------------------------------------
+
 ckpt = "meta-llama/Llama-3.2-11B-Vision"
 USE_LORA = False
+FREEZE_LLM = False
 FREEZE_IMAGE = True
-FREEZE_LLM = False  # must be False if FREEZE_IMAGE=True
 
 if USE_LORA:
-    # QLoRA + LoRA adapter
-    from transformers import BitsAndBytesConfig
-
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=8,
+        lora_dropout=0.1,
+        target_modules=['down_proj','o_proj','k_proj','q_proj','gate_proj','up_proj','v_proj'],
+        use_dora=True, # optional DoRA 
+        init_lora_weights="gaussian"
     )
 
     model = MllamaForConditionalGeneration.from_pretrained(
-        ckpt,
-        quantization_config=bnb_config,
-        device_map="auto",
+            ckpt,
+            torch_dtype=torch.bfloat16,
+            device_map="auto"
     )
 
-    lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        target_modules=["q_proj","v_proj","k_proj","o_proj","down_proj","up_proj"],
-        inference_mode=False,
-    )
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
-    model.gradient_checkpointing_enable()
 
 elif FREEZE_IMAGE:
     if FREEZE_LLM:
-        raise ValueError("Cannot freeze both image encoder and text decoder.")
-    model = MllamaForConditionalGeneration.from_pretrained(
-        ckpt,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    # freeze vision encoder
-    for p in model.vision_model.parameters():
-        p.requires_grad = False
+        raise ValueError("You cannot freeze image encoder and text decoder at the same time.")
+    model = MllamaForConditionalGeneration.from_pretrained(ckpt,
+        torch_dtype=torch.bfloat16, device_map="auto")
+    # freeze vision model to save up on compute
+    for param in model.vision_model.parameters():
+        param.requires_grad = False
 
 elif FREEZE_LLM:
-    model = MllamaForConditionalGeneration.from_pretrained(
-        ckpt,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    # freeze text decoder
-    for p in model.language_model.parameters():
-        p.requires_grad = False
-
-else:
-    model = MllamaForConditionalGeneration.from_pretrained(
-        ckpt,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
+    if FREEZE_IMAGE:
+        raise ValueError("You cannot freeze image encoder and text decoder at the same time.")
+    model = MllamaForConditionalGeneration.from_pretrained(ckpt,
+        torch_dtype=torch.bfloat16, device_map="auto")
+    # freeze text model, this is encouraged in paper
+    for param in model.language_model.parameters():
+        param.requires_grad = False
+        
+else: # full ft
+    model = MllamaForConditionalGeneration.from_pretrained(ckpt,
+        torch_dtype=torch.bfloat16, device_map="auto")
 
 processor = AutoProcessor.from_pretrained(ckpt)
 
-# ------------------------------------------------------------------------------
-# 3. Load & preprocess DataFrame
-# ------------------------------------------------------------------------------
-df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
 
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
@@ -105,109 +72,110 @@ def safe_parse_and_extract(msg):
     try:
         parsed = ast.literal_eval(msg)
         return parsed[0]["content"][0]["text"]
-    except Exception:
-        return ""
+    except Exception as e:
+        return f"[PARSE_ERROR: {str(e)}]"
 
 def parse2(msg):
     if pd.isna(msg):
         return ""
     try:
-        return ast.literal_eval(msg)[0]
-    except Exception:
-        return ""
+        parsed = ast.literal_eval(msg)
+        return parsed[0]
+    except Exception as e:
+        return f"[PARSE_ERROR: {str(e)}]"
 
-# extract user_text
+
+df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
+
 df["user_text"] = df["messages"].apply(safe_parse_and_extract)
 df.loc[df["user_text"] == "", "user_text"] = df["query"]
-
-# prepare finetune_answer
+# Step 2: Clean finetune_answer for specific API response
 df["ground_truth"] = df["ground_truth"].apply(parse2)
-df["finetune_answer"] = df["ground_truth"]
-df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = (
-    "i don't know. it's difficult to answer the question accurately."
-)
+df["finetune_answer"] = df["ground_truth"]  # Ensure column exists
+df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't know. it's difficult to answer the question accurately."
 df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
-# build Hugging Face dataset
+# Step 3: Convert to Hugging Face dataset
 ds = Dataset.from_dict({
-    "user_text": df["user_text"].tolist(),
-    "finetune_answer": df["finetune_answer"].tolist(),
+    'finetune_answer': df['finetune_answer'].tolist(),
+    'user_text': df['user_text'].tolist(),
 })
 
-# ------------------------------------------------------------------------------
-# 4. Tokenization / Pre-tokenize
-# ------------------------------------------------------------------------------
-max_length = 512
-
-def tokenize_fn(examples):
-    prompts = [
-        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n"
-        f"{u}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
-        f"{a}<|eot_id|>"
-        for u, a in zip(examples["user_text"], examples["finetune_answer"])
-    ]
-    model_inputs = processor(
-        text=prompts,
-        padding="max_length",
-        truncation=True,
-        max_length=max_length,
-    )
-
-    input_ids = model_inputs["input_ids"]
-    attention_mask = model_inputs["attention_mask"]
-
-    # build labels: mask pad token
-    labels = [
-        [token if token != processor.tokenizer.pad_token_id else -100 for token in seq]
-        for seq in input_ids
+# Step 4: Define process function
+def process(examples):
+    texts = [
+        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
+        for user, answer in zip(examples["user_text"], examples["finetune_answer"])
     ]
 
-    return {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-        "labels": labels,
-    }
+    batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
+    labels = batch["input_ids"].clone()
+    labels[labels == processor.tokenizer.pad_token_id] = -100
+    labels[labels == 128256] = -100
+    batch["labels"] = labels
 
-# map and remove raw text columns
-ds = ds.map(
-    tokenize_fn,
-    batched=True,
-    remove_columns=["user_text", "finetune_answer"],
-)
+    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    for k in batch:
+        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            batch[k] = batch[k].to(torch.bfloat16)
+        batch[k] = batch[k].to("cuda")
 
-# set to torch tensors
-ds.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
+    return batch
 
-# ------------------------------------------------------------------------------
-# 5. Training setup
-# ------------------------------------------------------------------------------
-training_args = TrainingArguments(
-    output_dir="./lora",
-    num_train_epochs=3,
-    per_device_train_batch_size=1,
-    gradient_accumulation_steps=4,
-    learning_rate=2e-5,
-    weight_decay=1e-6,
-    warmup_steps=2,
-    logging_steps=10,
-    report_to="wandb",
-    save_strategy="no",
-    push_to_hub=True,
-    bf16=True,
-    remove_unused_columns=False,
-    dataloader_pin_memory=False,
-)
+ds = ds.map(process, batched=True)
 
+from torch.utils.data import default_collate
+
+def custom_collator(examples):
+    # Assumes each example is pre-tokenized by `process`
+    # If not pre-tokenized, move tokenization here instead
+    batch = processor(text=[
+        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{ex['user_text']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{ex['finetune_answer']}<|eot_id|>"
+        for ex in examples
+    ], return_tensors="pt", padding=True, truncation=True)
+
+    labels = batch["input_ids"].clone()
+    labels[labels == processor.tokenizer.pad_token_id] = -100
+    labels[labels == 128256] = -100  # Optional image token ID masking
+    batch["labels"] = labels
+
+
+    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    for k in batch:
+        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            batch[k] = batch[k].to(torch.bfloat16)
+        batch[k] = batch[k].to("cuda")
+
+    return batch
+
+
+from transformers import TrainingArguments
+args=TrainingArguments(
+            num_train_epochs=3,
+            remove_unused_columns=False,
+            per_device_train_batch_size=32,
+            gradient_accumulation_steps=4,
+            warmup_steps=2,
+            learning_rate=2e-5,
+            weight_decay=1e-6,
+            adam_beta2=0.999,
+            report_to="wandb",
+            logging_steps=10,
+            save_strategy="no",
+            optim="adamw_torch",
+            push_to_hub=True,
+            save_total_limit=1,
+            bf16=True,
+            output_dir="./lora",
+            dataloader_pin_memory=False,
+        )
+
+from transformers import Trainer
 trainer = Trainer(
     model=model,
-    args=training_args,
     train_dataset=ds,
-    data_collator=default_data_collator,
+    data_collator=custom_collator,
+    args=args
 )
-
 wandb.watch(model, log="all", log_freq=50)
-
-# ------------------------------------------------------------------------------
-# 6. Run training
-# ------------------------------------------------------------------------------
 trainer.train()

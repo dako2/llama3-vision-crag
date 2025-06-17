@@ -250,7 +250,7 @@ class SimpleRAGAgent(BaseAgent):
                 top_p=0.85,
                 max_tokens=30,  # Short summary only
                 skip_special_tokens=True,
-                seed=42
+                seed=3407
             )
         )
         
@@ -565,7 +565,7 @@ class SimpleRAGAgent(BaseAgent):
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
-                seed=42
+                seed=3407
             )
         )
         generated_texts = [output.outputs[0].text for output in generated_outputs]

@@ -109,9 +109,6 @@ def _inject_real_image(rec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         print(f"[ERROR] {sid} – {e}")
         return None
 
-
-
-
 def load_or_build_dataset() -> List[Dict[str, Any]]:
     if os.path.exists(PICKLE_PATH):
         print(f"📦  Using cached dataset → {PICKLE_PATH}")
@@ -149,7 +146,7 @@ print("Total conversations:", len(train_conv))
 model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
 model, tokenizer = FastVisionModel.from_pretrained(
     model_id,
-    load_in_4bit=True,
+    load_in_4bit=False,
     use_gradient_checkpointing="unsloth",
 )
 FastVisionModel.for_training(model)
@@ -180,12 +177,12 @@ class GPUStats(TrainerCallback):
 # 5)  SFT Trainer config
 # ----------------------------------------------------------------
 config = SFTConfig(
-    per_device_train_batch_size=16,          # adjust for VRAM
-    gradient_accumulation_steps=8,
+    per_device_train_batch_size=32,          # adjust for VRAM
+    gradient_accumulation_steps=4,
     num_train_epochs=3,
     learning_rate=1e-4,
     optim="adamw_8bit",
-    bf16=is_bf16_supported(), fp16=False,
+    bf16=True, fp16=False,
     save_strategy="epoch",
     save_total_limit=1,
     report_to="wandb",
