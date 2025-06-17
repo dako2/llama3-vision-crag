@@ -13,12 +13,9 @@ from agents._reranker import SentenceReranker
 from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
-from miao_router import MiaoRouter
-
+from agents.miao_router import MiaoRouter
 
 mr = MiaoRouter()
-
-
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
@@ -505,6 +502,7 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Processing batch of {len(queries)} queries with RAG")
 
         should_skip_by_difficulty_index = mr.route(queries)
+        #print("should_skip_by_difficulty_index:",should_skip_by_difficulty_index)
 
         images = resize_images(images)
 
@@ -543,17 +541,6 @@ class SimpleRAGAgent(BaseAgent):
                 # "multi_modal_data": {"image": image}
             })
 
-            # rag_inputs.append(
-            #     {  # Explicit prompt
-            #         # "encoder_prompt": {
-            #         #     "prompt": "<|image|>",
-            #         #     "multi_modal_data": {
-            #         #         "image": ImageAsset("stop_sign").pil_image,
-            #         #     },
-            #         # },
-            #         "decoder_prompt": "<|begin_of_text|>Please describe the image.",  # noqa: E501
-            #     })
-
             original_indices.append(idx)
             full_messages_batch[idx] = messages  # ✅ Save message to aligned batch
 
@@ -573,12 +560,13 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated {len(generated_texts)} responses")
 
         # Step 5: Merge skipped + generated back in original order
-        predictions = [""] * len(queries)
+        predictions = ["I don't know"] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
-        for idx, skip in enumerate(should_skip):
-            if skip:
-                predictions[idx] = "I don't know"
+        # for idx, skip in enumerate(should_skip):
+        #     if skip:
+        #         predictions[idx] = "I don't know"
+
 
         predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
