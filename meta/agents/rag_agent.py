@@ -525,8 +525,8 @@ class SimpleRAGAgent(BaseAgent):
         for idx, (skip, query, image, summary, history, summary_search) in enumerate(zip(
             should_skip, queries, images, image_summaries, message_histories, image_summaries_2
         )):
-            # if skip:
-            #     continue
+            if skip:
+                continue
 
             # if should_skip_by_difficulty_index:
             #     if idx in should_skip_by_difficulty_index:
