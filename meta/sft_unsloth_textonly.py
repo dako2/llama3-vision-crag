@@ -14,6 +14,25 @@ from unsloth import is_bf16_supported
 from unsloth.trainer import UnslothVisionDataCollator
 from trl import SFTTrainer, SFTConfig
 
+def safe_parse_and_extract(msg):
+    if pd.isna(msg):
+        return ""
+    try:
+        parsed = ast.literal_eval(msg)
+        return parsed[0]["content"][0]["text"]
+    except Exception as e:
+        return f"[PARSE_ERROR: {str(e)}]"
+
+def parse2(msg):
+    if pd.isna(msg):
+        return ""
+    try:
+        parsed = ast.literal_eval(msg)
+        return parsed[0]
+    except Exception as e:
+        return f"[PARSE_ERROR: {str(e)}]"
+
+
 
 # 0) W&B login
 wandb.login()
