@@ -19,7 +19,7 @@ model, tokenizer = FastVisionModel.from_pretrained(
 )
 
 # Saving & Pushing
-model.save_pretrained_merged("model", tokenizer, save_method = "merged_16bit",)
+model.save_pretrained_merged("model_new", tokenizer, save_method = "merged_16bit",)
 #model.push_to_hub_merged("hf/model", tokenizer, save_method = "merged_16bit", token = "")
 
 # model.save_pretrained(
