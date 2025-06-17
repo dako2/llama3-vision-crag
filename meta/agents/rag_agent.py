@@ -154,13 +154,15 @@ class SimpleRAGAgent(BaseAgent):
             max_model_len=MAX_MODEL_LEN,
             max_num_seqs=MAX_NUM_SEQS,
             trust_remote_code=True,
-            dtype="auto",
+            dtype="bfloat16",
             enforce_eager=True,
             limit_mm_per_prompt={
                 "image": 1 
             } # In the CRAG-MM dataset, every conversation has at most 1 image
         )
         self.tokenizer = self.llm.get_tokenizer()
+
+
         
         # if self.tokenizer.chat_template is None:
         #     tmpl_file = Path(self.model_name) / "chat_template.json"
@@ -209,8 +211,8 @@ class SimpleRAGAgent(BaseAgent):
         """
         # Prepare image summarization prompts in batch
         #summarize_prompt = """First provide the exact identity name that I was asking previously in the image -- {query}. Then, rephrase the question to web searching phrase. If you are not sure, please respond 'I don't know' directly."""
-        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. """
-        #summarize_prompt = """If you are not sure, please respond 'I don't know' directly. Don't answer the question itself. Identity the specific name of the object that the user is asking in the image -- {query}."""
+        summarize_prompt = """Identity the specific name of the object that the user is asking in the image. Don't answer the question itself but provide only the object identification that the user is asking {query}. If you are not sure, please respond 'I don't know' directly."""
+        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
         
         inputs = []
         messages_batch = []
@@ -250,9 +252,7 @@ class SimpleRAGAgent(BaseAgent):
         # Extract and clean summaries
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
-        
-        #another_prompt = """Give a helpful one web-search query to answer the image question. Question on image: {query}. Object in image: {caption}. Respond only with the query."""
-        
+
         # inputs = []
         # messages_batch = []
         # for query, caption, image in zip(queries, summaries, images):
@@ -498,12 +498,6 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of generated responses, one per input query.
         """
         print(f"Processing batch of {len(queries)} queries with RAG")
-
-
-        # difficulty_levels = miao_router(queries)
-        # # Step 2: Determine which queries should skip LLM generation
-        # should_skip_0 = [difficult.lower().strip() == "i don't know" for difficult in difficulty_levels]
-
         
         images = resize_images(images)
 
@@ -542,6 +536,10 @@ class SimpleRAGAgent(BaseAgent):
                 # "multi_modal_data": {"image": image}
             })
 
+            print("\n\n\n\n=============================qt to debug")
+            print(formatted_prompt)
+            print("\n\n\n\n=============================qt to debug")
+
             # rag_inputs.append(
             #     {  # Explicit prompt
             #         # "encoder_prompt": {
@@ -561,7 +559,7 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.1,
+                temperature=0.01,
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
