@@ -13,6 +13,11 @@ from agents._reranker import SentenceReranker
 from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
+from miao_router import 
+
+
+mr = MiaoRouter()
+
 
 fast_rr = SentenceReranker()
 # Configuration constants
@@ -154,7 +159,7 @@ class SimpleRAGAgent(BaseAgent):
             max_model_len=MAX_MODEL_LEN,
             max_num_seqs=MAX_NUM_SEQS,
             trust_remote_code=True,
-            dtype="auto",
+            dtype="bfloat16",
             enforce_eager=True,
             limit_mm_per_prompt={
                 "image": 1 
@@ -555,7 +560,7 @@ class SimpleRAGAgent(BaseAgent):
         generated_outputs = self.llm.generate(
             rag_inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.1,
+                temperature=0.01,
                 top_p=0.85,
                 max_tokens=MAX_GENERATION_TOKENS,
                 skip_special_tokens=True,
