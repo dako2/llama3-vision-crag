@@ -257,45 +257,45 @@ class SimpleRAGAgent(BaseAgent):
         summaries = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
         print(f"Generated {len(summaries)} image summaries")
 
-        # inputs = []
-        # messages_batch = []
-        # for query, caption, image in zip(queries, summaries, images):
-        #     messages = [
-        #         {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": another_prompt.format(query=query, caption=caption)}]},
-        #     ]
+        inputs = []
+        messages_batch = []
+        for query, caption, image in zip(queries, summaries, images):
+            messages = [
+                {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": another_prompt.format(query=query, caption=caption)}]},
+            ]
             
-        #     # Format prompt using the tokenizer
-        #     formatted_prompt = self.tokenizer.apply_chat_template(
-        #         messages,
-        #         add_generation_prompt=True,
-        #         tokenize=False
-        #     )
-        #     print(formatted_prompt)
+            # Format prompt using the tokenizer
+            formatted_prompt = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False
+            )
+            print(formatted_prompt)
             
-        #     inputs.append({
-        #         "prompt": formatted_prompt,
-        #         "multi_modal_data": {
-        #             "image": image
-        #         }
-        #     })
-        #     messages_batch.append(messages)
+            inputs.append({
+                "prompt": formatted_prompt,
+                "multi_modal_data": {
+                    "image": image
+                }
+            })
+            messages_batch.append(messages)
         
-        # # Generate summaries in a single batch call
-        # outputs = self.llm.generate(
-        #     inputs,
-        #     sampling_params=vllm.SamplingParams(
-        #         temperature=0.01,
-        #         top_p=0.9,
-        #         max_tokens=50,  # Short summary only
-        #         skip_special_tokens=True
-        #     )
-        # )
+        # Generate summaries in a single batch call
+        outputs = self.llm.generate(
+            inputs,
+            sampling_params=vllm.SamplingParams(
+                temperature=0.01,
+                top_p=0.9,
+                max_tokens=50,  # Short summary only
+                skip_special_tokens=True
+            )
+        )
         
-        # # Extract and clean summaries
-        # summaries_2 = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
-        # print(f"Generated {len(summaries_2)} image summaries")
+        # Extract and clean summaries
+        summaries_2 = [normalize_answer(output.outputs[0].text.strip()) for output in outputs]
+        print(f"Generated {len(summaries_2)} image summaries")
 
-        return summaries, messages_batch, summaries
+        return summaries, messages_batch, summaries_2
 
     def prepare_image_search_inputs(
         self,
@@ -512,7 +512,7 @@ class SimpleRAGAgent(BaseAgent):
 
         print(f"Processing batch of {len(queries)} queries with RAG")
         
-        images = resize_images(images)
+        #images = resize_images(images)
 
         # Step 1: Batch summarize all images for search terms
         image_summaries, caption_messages_batch, image_summaries_2 = self.batch_summarize_images(queries, images)
