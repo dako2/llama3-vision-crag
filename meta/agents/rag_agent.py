@@ -241,9 +241,9 @@ class SimpleRAGAgent(BaseAgent):
         outputs = self.llm.generate(
             inputs,
             sampling_params=vllm.SamplingParams(
-                temperature=0.01,
-                top_p=0.85,
-                max_tokens=30,  # Short summary only
+                temperature=0.1,
+                top_p=0.9,
+                max_tokens=40,  # Short summary only
                 skip_special_tokens=True,
                 seed=42
             )
@@ -535,10 +535,6 @@ class SimpleRAGAgent(BaseAgent):
                 "prompt": formatted_prompt,
                 # "multi_modal_data": {"image": image}
             })
-
-            print("\n\n\n\n=============================qt to debug")
-            print(formatted_prompt)
-            print("\n\n\n\n=============================qt to debug")
 
             # rag_inputs.append(
             #     {  # Explicit prompt
