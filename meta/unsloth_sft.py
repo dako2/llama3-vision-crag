@@ -192,11 +192,11 @@ if True:
         
         
         args = SFTConfig(
-            per_device_train_batch_size = 32,
+            per_device_train_batch_size = 16,
             gradient_accumulation_steps = 4,
             warmup_steps = 5,
             max_steps = 90,
-            # num_train_epochs = 1, # Set this instead of max_steps for full training runs
+            num_train_epochs = 3, # Set this instead of max_steps for full training runs
             learning_rate = 2e-4,
             fp16 = False,
             bf16 = True,
