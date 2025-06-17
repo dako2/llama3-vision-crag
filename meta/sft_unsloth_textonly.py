@@ -16,16 +16,6 @@ from trl import SFTTrainer, SFTConfig
 
 from unsloth.chat_templates import train_on_responses_only
 
-response_only_template = train_on_responses_only(chat_template)
-
-data_collator = UnslothVisionDataCollator(
-    model, tokenizer,
-    train_on_responses_only=True,
-    instruction_part="",    # not used
-    response_part="<|start_header_id|>assistant<|end_header_id|>\n\n",
-    chat_template=response_only_template,
-)
-
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
         return ""
