@@ -79,6 +79,8 @@ def normalize_answer_idk(text: str) -> str:
 
     if any(phrase in text_lower for phrase in uncertain_phrases):
         return "I DON't KNOW"
+    if not text:
+        return "I DON't KNOW"
     return text
 
 class SimpleRAGAgent(BaseAgent):
@@ -526,9 +528,9 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 continue
 
-            if should_skip_by_difficulty_index:
-                if idx in should_skip_by_difficulty_index:
-                    continue
+            # if should_skip_by_difficulty_index:
+            #     if idx in should_skip_by_difficulty_index:
+            #         continue
 
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
@@ -563,16 +565,16 @@ class SimpleRAGAgent(BaseAgent):
         print(f"Successfully generated {len(generated_texts)} responses")
 
         # Step 5: Merge skipped + generated back in original order
-        # predictions = [""] * len(queries)
-        # for idx, text in zip(original_indices, generated_texts):
-        #     predictions[idx] = text
-        # for idx, skip in enumerate(should_skip):
-        #     if skip:
-        #         predictions[idx] = "I don't know"
-        
-        predictions = ["I DoN't kNoW"] * len(queries)
+        predictions = [""] * len(queries)
         for idx, text in zip(original_indices, generated_texts):
             predictions[idx] = text
+        for idx, skip in enumerate(should_skip):
+            if skip:
+                predictions[idx] = "I don't know"
+        
+        # predictions = ["I DoN't kNoW"] * len(queries)
+        # for idx, text in zip(original_indices, generated_texts):
+        #     predictions[idx] = text
         
         predictions = [normalize_answer_idk(p) for p in predictions]
         print(f"Successfully generated responses: {predictions} ")
