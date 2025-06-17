@@ -1,6 +1,7 @@
 from unsloth import FastLanguageModel, FastVisionModel
 import torch
 from datasets import load_dataset
+import pandas as pd
 
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
 from unsloth import is_bfloat16_supported
