@@ -154,8 +154,10 @@ def collate_fn(examples):
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100  #
     # Ignore the image token index in the loss computation (model specific)
-    image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
-    labels[labels == image_token_id] = -100
+    #image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
+    #labels[labels == image_token_id] = -100
+    
+
     batch["labels"] = labels
 
     return batch
