@@ -343,8 +343,8 @@ class SimpleRAGAgent(BaseAgent):
 
             print("searching:",query)
 
-            q = f"{query} {summary}"
-            #q = f"{search_summary}"
+            #q = f"{query} {summary}"
+            q = f"{search_summary}"
 
             rag_context = []
             try:
