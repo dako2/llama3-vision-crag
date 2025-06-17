@@ -145,19 +145,18 @@ def collate_fn(examples):
         f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
         for user, answer in zip(examples["user_text"], examples["finetune_answer"])
     ]
-    print(texts)
+    #print(texts)
     batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
-    #print(batch)
-    labels = batch["input_ids"].clone()
-    labels[labels == processor.tokenizer.pad_token_id] = -100
-    labels[labels == 128256] = -100
-    batch["labels"] = labels
+    print(batch)
 
-    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
-    for k in batch:
-        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
-            batch[k] = batch[k].to(torch.bfloat16)
-        batch[k] = batch[k].to("cuda")
+
+    # The labels are the input_ids, and we mask the padding tokens in the loss computation
+    labels = batch["input_ids"].clone()
+    labels[labels == processor.tokenizer.pad_token_id] = -100  #
+    # Ignore the image token index in the loss computation (model specific)
+    image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
+    labels[labels == image_token_id] = -100
+    batch["labels"] = labels
 
     return batch
 
