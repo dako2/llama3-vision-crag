@@ -152,7 +152,7 @@ class CRAGEvaluator:
             A dictionary with evaluation results added to crag_turn_data.
         """
         agent_response = crag_turn_data["agent_response"]
-        ground_truth = crag_turn_data["ground_truth"]
+        ground_truth = crag_turn_data["ground_truth"][0]
         query = crag_turn_data["query"]
 
         is_idk = "i don't know" in agent_response.lower()

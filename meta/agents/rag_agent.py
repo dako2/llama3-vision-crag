@@ -166,22 +166,22 @@ class SimpleRAGAgent(BaseAgent):
         )
         self.tokenizer = self.llm.get_tokenizer()
         
-        if self.tokenizer.chat_template is None:
-            tmpl_file = Path(self.model_name) / "chat_template.json"
-            if tmpl_file.exists():
-                self.tokenizer.chat_template = tmpl_file.read_text()
-                print("Chat template loaded from local file.")
-            else:
-                # fallback – inline template for Llama-3.2 Vision
-                self.tokenizer.chat_template = (
-                    "{% if messages[0]['role'] == 'system' %}"
-                    "{{ messages[0]['content'] }}{% endif %}"
-                    "{% for m in messages[1:] %}"
-                    "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
-                    "{% endfor %}"
-                    "{{ '<|im_start|>assistant\\n' }}"
-                )
-                print("Injected default chat template.")
+        # if self.tokenizer.chat_template is None:
+        #     tmpl_file = Path(self.model_name) / "chat_template.json"
+        #     if tmpl_file.exists():
+        #         self.tokenizer.chat_template = tmpl_file.read_text()
+        #         print("Chat template loaded from local file.")
+        #     else:
+        #         # fallback – inline template for Llama-3.2 Vision
+        #         self.tokenizer.chat_template = (
+        #             "{% if messages[0]['role'] == 'system' %}"
+        #             "{{ messages[0]['content'] }}{% endif %}"
+        #             "{% for m in messages[1:] %}"
+        #             "{{ '<|im_start|>' + m['role'] + '\\n' + m['content'] + '<|im_end|>' }}"
+        #             "{% endfor %}"
+        #             "{{ '<|im_start|>assistant\\n' }}"
+        #         )
+        #         print("Injected default chat template.")
 
         print("Models loaded successfully")
 
