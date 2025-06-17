@@ -13,7 +13,7 @@ from agents._reranker import SentenceReranker
 from pathlib import Path
 import pandas as pd
 import agents.evaluation_utils as ev
-from miao_router import 
+from miao_router import MiaoRouter
 
 
 mr = MiaoRouter()
@@ -503,7 +503,9 @@ class SimpleRAGAgent(BaseAgent):
             List[str]: List of generated responses, one per input query.
         """
         print(f"Processing batch of {len(queries)} queries with RAG")
-        
+
+        should_skip_by_difficulty_index = mr.route(queries)
+
         images = resize_images(images)
 
         # Step 1: Batch summarize all images for search terms
