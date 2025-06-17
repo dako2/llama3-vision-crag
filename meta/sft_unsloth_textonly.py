@@ -14,6 +14,18 @@ from unsloth import is_bf16_supported
 from unsloth.trainer import UnslothVisionDataCollator
 from trl import SFTTrainer, SFTConfig
 
+from unsloth.chat_templates import train_on_responses_only
+
+response_only_template = train_on_responses_only(chat_template)
+
+data_collator = UnslothVisionDataCollator(
+    model, tokenizer,
+    train_on_responses_only=True,
+    instruction_part="",    # not used
+    response_part="<|start_header_id|>assistant<|end_header_id|>\n\n",
+    chat_template=response_only_template,
+)
+
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
         return ""
@@ -133,7 +145,7 @@ def collate_fn(examples):
     batch["labels"] = labels
 
     return batch
-    
+
 if True:
 
     data_collator = UnslothVisionDataCollator(
@@ -149,7 +161,7 @@ if True:
     trainer = SFTTrainer(
         model = model,
         tokenizer = tokenizer,
-        data_collator = collate_fn, # Must use!
+        data_collator = data_collator, #collate_fn, # Must use!
         train_dataset = converted_dataset,
         args = SFTConfig(
             per_device_train_batch_size = 2,
