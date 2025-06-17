@@ -147,6 +147,7 @@ def collate_fn(examples):
     ]
     print(texts)
     batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
+    #print(batch)
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100
     labels[labels == 128256] = -100
