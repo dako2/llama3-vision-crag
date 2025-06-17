@@ -526,6 +526,9 @@ class SimpleRAGAgent(BaseAgent):
             if skip:
                 continue
 
+            if idx in should_skip_by_difficulty_index:
+                continue
+
             messages = self.prepare_rag_enhanced_inputs(
                 [query], [image], [summary], [history], [summary_search]
             )[0]  # unpack single result
