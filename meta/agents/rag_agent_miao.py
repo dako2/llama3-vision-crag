@@ -16,8 +16,8 @@ import agents.evaluation_utils as ev
 
 
 from agents.miao_router import MiaoRouter
-
 mr = MiaoRouter()
+
 fast_rr = SentenceReranker()
 # Configuration constants
 AICROWD_SUBMISSION_BATCH_SIZE = 8
