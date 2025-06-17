@@ -16,6 +16,8 @@ import wandb
 wandb.login()
 wandb.init(project="cragmm-huggingface-sft", name="llama3-vision-sft")
 
+from torch.utils.data import default_collate
+
 
 ckpt = "meta-llama/Llama-3.2-11B-Vision"
 USE_LORA = False
@@ -103,32 +105,6 @@ ds = Dataset.from_dict({
     'finetune_answer': df['finetune_answer'].tolist(),
     'user_text': df['user_text'].tolist(),
 })
-
-# Step 4: Define process function
-def process(examples):
-    texts = [
-        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
-        for user, answer in zip(examples["user_text"], examples["finetune_answer"])
-    ]
-
-    batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
-    labels = batch["input_ids"].clone()
-    labels[labels == processor.tokenizer.pad_token_id] = -100
-    labels[labels == 128256] = -100
-    batch["labels"] = labels
-
-    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
-    for k in batch:
-        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
-            batch[k] = batch[k].to(torch.bfloat16)
-        batch[k] = batch[k].to("cuda")
-
-    return batch
-
-
-ds = ds.map(process, batched=True)
-
-from torch.utils.data import default_collate
 
 def custom_collator(examples):
     # Assumes each example is pre-tokenized by `process`
