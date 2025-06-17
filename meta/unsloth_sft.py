@@ -162,6 +162,8 @@ def collate_fn(examples):
 
 ds = ds.map(collate_fn, batched=True)
 
+ds = ds.remove_columns(["finetune_answer", "user_text"])
+
 unsloth_template = \
     "{{ bos_token }}"\
     "{% if messages[0]['role'] == 'system' %}"\
