@@ -181,7 +181,7 @@ class SimpleRAGAgent(BaseAgent):
                 # fallback – inline template for Llama-3.2 Vision
             self.tokenizer.chat_template = """{{ bos_token }}\
 {%- for message in messages %}\
-{{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n' + '<|image|>'}}\
+{{ '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'}}\
 {%- for content in message['content'] %}\
 {%- if content['type'] == 'text' %}\
 {{ content['text'] }}\
