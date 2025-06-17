@@ -62,7 +62,7 @@ else: # full ft
 processor = AutoProcessor.from_pretrained(ckpt)
 
 
-df = pd.read_csv("turn_evaluation_results_all.csv")
+df = pd.read_csv("turn_evaluation_results_all_1p3k.csv")
 
 def safe_parse_and_extract(msg):
     if pd.isna(msg):
@@ -95,23 +95,58 @@ df.loc[df["api_response"] == "{'accuracy': True}", "finetune_answer"] = "i don't
 df.loc[df["is_miss"] == True, "finetune_answer"] = "i don't know"
 
 # Step 3: Convert to Hugging Face dataset
-ds = Dataset.from_pandas(df)
+ds = Dataset.from_dict({
+    'finetune_answer': df['finetune_answer'].tolist(),
+    'user_text': df['user_text'].tolist(),
+})
 
 # Step 4: Define process function
 def process(examples):
     texts = [
-        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{q} <|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{a}<|eot_id|>"
-        for q, a in zip(examples["user_text"], [x for x in examples["finetune_answer"]])
+        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{answer}<|eot_id|>"
+        for user, answer in zip(examples["user_text"], examples["finetune_answer"])
     ]
-    print(texts)
-    batch = processor(text=texts, return_tensors="pt", padding=True)
+
+    batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100
-    labels[labels == 128256] = -100  # Mask image tokens if any
+    labels[labels == 128256] = -100
     batch["labels"] = labels
+
+    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    for k in batch:
+        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            batch[k] = batch[k].to(torch.bfloat16)
+        batch[k] = batch[k].to("cuda")
+
     return batch
 
+
 ds = ds.map(process, batched=True)
+
+from torch.utils.data import default_collate
+
+def custom_collator(examples):
+    # Assumes each example is pre-tokenized by `process`
+    # If not pre-tokenized, move tokenization here instead
+    batch = processor(text=[
+        f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{ex['user_text']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n{ex['finetune_answer']}<|eot_id|>"
+        for ex in examples
+    ], return_tensors="pt", padding=True, truncation=True)
+
+    labels = batch["input_ids"].clone()
+    labels[labels == processor.tokenizer.pad_token_id] = -100
+    labels[labels == 128256] = -100  # Optional image token ID masking
+    batch["labels"] = labels
+
+
+    # ✅ Move everything to GPU, but only cast float tensors to bfloat16
+    for k in batch:
+        if batch[k].dtype in [torch.float32, torch.float16, torch.bfloat16]:
+            batch[k] = batch[k].to(torch.bfloat16)
+        batch[k] = batch[k].to("cuda")
+
+    return batch
 
 
 from transformers import TrainingArguments
@@ -136,10 +171,10 @@ args=TrainingArguments(
 
 from transformers import Trainer
 trainer = Trainer(
-        model=model,
-        train_dataset=ds,
-        data_collator=process,
-        args=args
-        )
+    model=model,
+    train_dataset=ds,
+    data_collator=custom_collator,
+    args=args
+)
 
 trainer.train()
