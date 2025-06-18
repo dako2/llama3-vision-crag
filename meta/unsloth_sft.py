@@ -121,8 +121,8 @@ trainer = SFTTrainer(
         per_device_train_batch_size = 8,
         gradient_accumulation_steps = 4,
         warmup_steps = 0,
-        max_steps = 10,
-        num_train_epochs = 1, # Set this instead of max_steps for full training runs
+        max_steps = 150,
+        num_train_epochs = 3, # Set this instead of max_steps for full training runs
         learning_rate = 1e-5,
         fp16 = False,
         bf16 = True,
@@ -133,7 +133,7 @@ trainer = SFTTrainer(
         save_strategy="epoch",
         save_total_limit=3,
         seed = 3407,
-        output_dir = "outputs",
+        output_dir = "outputs2",
         report_to = "none",     # For Weights and Biases
 
         # You MUST put the below items for vision finetuning:
