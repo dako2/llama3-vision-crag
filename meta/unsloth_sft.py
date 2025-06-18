@@ -7,6 +7,8 @@ import wandb
 from transformers import TrainingArguments, DataCollatorForSeq2Seq, AutoProcessor
 
 from trl import SFTTrainer, SFTConfig
+
+
 import ast 
 from datasets import Dataset
 
@@ -83,20 +85,20 @@ def collate_fn(examples):
     ]
     #print(texts)
     batch = processor(text=texts, return_tensors="pt", padding=True, truncation=True)
-    print(batch)
+    
     # The labels are the input_ids, and we mask the padding tokens in the loss computation
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = -100  #
     # Ignore the image token index in the loss computation (model specific)
     #image_token_id = processor.tokenizer.convert_tokens_to_ids(processor.image_token)
     #labels[labels == image_token_id] = -100
-    
     batch["labels"] = labels
-
+    print(batch)
+    
     return batch
 
 ds = ds.map(collate_fn, batched=True)
-ds = ds.remove_columns(["finetune_answer", "user_text"])
+ds = ds.remove_columns(["finetune_answer", "user_text"]) #ds format: "input_ids", "attention_mask", "labels"
 
 # data_collator = UnslothVisionDataCollator(
 #     model,
@@ -136,7 +138,7 @@ trainer = SFTTrainer(
 
         # You MUST put the below items for vision finetuning:
         remove_unused_columns = False,
-        dataset_text_field = "",
+        dataset_text_field = "input_ids", # The field in the dataset that contains the text
         dataset_kwargs = {"skip_prepare_dataset": True},
         dataset_num_proc = 4,
         max_seq_length = max_seq_length,
